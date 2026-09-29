@@ -1432,7 +1432,7 @@ if (fs.existsSync(clientDist)) {
 }
 
 // Start Server
-app.listen(PORT, () => {
-  console.log(`🚀 ValorVault backend running on http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 ValorVault backend running on port ${PORT}`);
 });
 
