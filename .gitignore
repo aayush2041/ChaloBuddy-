@@ -1,0 +1,40 @@
+# Node Dependencies
+node_modules/
+client/node_modules/
+.npm/
+
+# Production Build Outputs
+client/dist/
+
+# Local Environment Variables
+.env
+.env.local
+.env.*.local
+
+# Operating System & IDE Files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Database & Uploads for local development (optional)
+# server/database.sqlite
+# server/uploads/*
+!server/uploads/.gitkeep
+
+# Temporary / Scratch Files
+scratch/
+scraped_shopify.html
+test-workflow.js
