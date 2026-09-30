@@ -80,7 +80,7 @@ export function initDatabase() {
       allocated_to_order_id TEXT,
       allocated_at DATETIME,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (product_id) REFERENCES products (id)
+      FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE CASCADE
     );
   `);
 
@@ -115,15 +115,14 @@ export function initDatabase() {
     CREATE TABLE IF NOT EXISTS order_items (
       id TEXT PRIMARY KEY,
       order_id TEXT NOT NULL,
-      product_id TEXT NOT NULL,
+      product_id TEXT,
       product_name TEXT NOT NULL,
       price REAL NOT NULL,
       quantity INTEGER DEFAULT 1,
       delivery_type TEXT NOT NULL,
       specs_snapshot TEXT,
       image_snapshot TEXT,
-      FOREIGN KEY (order_id) REFERENCES orders (id) ON DELETE CASCADE,
-      FOREIGN KEY (product_id) REFERENCES products (id)
+      FOREIGN KEY (order_id) REFERENCES orders (id) ON DELETE CASCADE
     );
   `);
 
@@ -227,7 +226,7 @@ export function initDatabase() {
       comment TEXT NOT NULL,
       verified_purchase INTEGER DEFAULT 1,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (product_id) REFERENCES products (id)
+      FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE CASCADE
     );
   `);
 
@@ -267,7 +266,7 @@ export function initDatabase() {
       reason TEXT NOT NULL,
       admin_name TEXT DEFAULT 'Admin',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (product_id) REFERENCES products (id)
+      FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE CASCADE
     );
   `);
 
@@ -288,6 +287,37 @@ export function initDatabase() {
   safeAddCol('inventory_vault', 'title', 'TEXT');
   safeAddCol('inventory_vault', 'status', "TEXT DEFAULT 'AVAILABLE'");
   safeAddCol('inventory_vault', 'notes', 'TEXT');
+
+  // Safe migration for order_items: detach restrictive foreign key to products so historical orders are never blocked
+  try {
+    const fks = db.prepare("PRAGMA foreign_key_list(order_items)").all();
+    const hasProdFk = fks.some(f => f.table === 'products');
+    if (hasProdFk) {
+      db.pragma('foreign_keys = OFF');
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS order_items_new (
+          id TEXT PRIMARY KEY,
+          order_id TEXT NOT NULL,
+          product_id TEXT,
+          product_name TEXT NOT NULL,
+          price REAL NOT NULL,
+          quantity INTEGER DEFAULT 1,
+          delivery_type TEXT NOT NULL,
+          specs_snapshot TEXT,
+          image_snapshot TEXT,
+          FOREIGN KEY (order_id) REFERENCES orders (id) ON DELETE CASCADE
+        );
+        INSERT INTO order_items_new (id, order_id, product_id, product_name, price, quantity, delivery_type, specs_snapshot, image_snapshot)
+        SELECT id, order_id, product_id, product_name, price, quantity, delivery_type, specs_snapshot, image_snapshot
+        FROM order_items;
+        DROP TABLE order_items;
+        ALTER TABLE order_items_new RENAME TO order_items;
+      `);
+      db.pragma('foreign_keys = ON');
+    }
+  } catch (e) {
+    console.error('Error migrating order_items foreign key:', e);
+  }
 
   // Populate default SKUs if empty
   try {

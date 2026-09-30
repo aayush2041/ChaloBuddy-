@@ -747,6 +747,7 @@ app.delete('/api/products/:id', requireAdmin, (req, res) => {
       return res.status(404).json({ success: false, error: 'Product not found' });
     }
 
+    db.prepare('DELETE FROM reviews WHERE product_id = ?').run(id);
     db.prepare('DELETE FROM inventory_vault WHERE product_id = ?').run(id);
     db.prepare('DELETE FROM stock_adjustments WHERE product_id = ?').run(id);
     db.prepare('DELETE FROM products WHERE id = ?').run(id);
@@ -769,6 +770,7 @@ app.post('/api/products/bulk', requireAdmin, (req, res) => {
     const placeholders = product_ids.map(() => '?').join(',');
 
     if (action === 'delete') {
+      db.prepare(`DELETE FROM reviews WHERE product_id IN (${placeholders})`).run(...product_ids);
       db.prepare(`DELETE FROM inventory_vault WHERE product_id IN (${placeholders})`).run(...product_ids);
       db.prepare(`DELETE FROM stock_adjustments WHERE product_id IN (${placeholders})`).run(...product_ids);
       const result = db.prepare(`DELETE FROM products WHERE id IN (${placeholders})`).run(...product_ids);
