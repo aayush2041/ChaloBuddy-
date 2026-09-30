@@ -66,17 +66,18 @@ export default function SearchModal({ isOpen, onClose }) {
           <Search className="w-5 h-5 text-black shrink-0 mr-3" strokeWidth={1.75} />
           <input
             ref={inputRef}
-            type="search"
+            type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search accounts, skins, games..."
-            className="w-full bg-transparent text-black text-base outline-none placeholder:text-neutral-500 font-sans"
+            className="w-full bg-transparent text-[#09090B] text-base outline-none placeholder:text-neutral-400 font-sans"
           />
           {searchTerm && (
             <button
               type="button"
               onClick={() => setSearchTerm('')}
-              className="text-neutral-500 hover:text-black p-1 mr-1"
+              className="text-neutral-400 hover:text-[#09090B] p-1 rounded-md hover:bg-neutral-100 transition-colors mr-2 cursor-pointer"
+              aria-label="Clear search"
             >
               <X className="w-4 h-4" />
             </button>
@@ -84,7 +85,7 @@ export default function SearchModal({ isOpen, onClose }) {
           <button
             type="button"
             onClick={onClose}
-            className="text-xs uppercase tracking-wider font-bold border border-neutral-300 px-2 py-1 hover:border-black transition"
+            className="text-[11px] uppercase tracking-wider font-mono font-bold text-neutral-500 bg-neutral-50 border border-neutral-200 px-2 py-0.5 rounded hover:border-neutral-400 hover:text-black transition cursor-pointer"
           >
             ESC
           </button>

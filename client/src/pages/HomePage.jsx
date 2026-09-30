@@ -104,11 +104,17 @@ export default function HomePage() {
       <section className="relative w-full min-h-[440px] sm:min-h-[480px] lg:h-[520px] bg-white overflow-hidden flex items-center">
         {/* Right Artwork Container with Seamless Fade */}
         <div className="absolute inset-y-0 right-0 w-full lg:w-[60%] z-0 overflow-hidden pointer-events-none">
-          <img
-            src="/shopify_assets/hero.png"
-            alt="Hero Artwork"
-            className="w-full h-full object-cover object-right-top opacity-90 sm:opacity-95"
-          />
+          <picture>
+            <source srcSet="/shopify_assets/hero.webp" type="image/webp" />
+            <img
+              src="/shopify_assets/hero.png"
+              alt="Hero Artwork"
+              fetchPriority="high"
+              loading="eager"
+              decoding="async"
+              className="w-full h-full object-cover object-right-top opacity-90 sm:opacity-95"
+            />
+          </picture>
           {/* Subtle horizontal mask that keeps the left clean for text while integrating character */}
           <div
             className="absolute inset-0"
@@ -404,11 +410,16 @@ export default function HomePage() {
             className="w-full aspect-[16/9] sm:aspect-[16/7] rounded-[16px] sm:rounded-[20px] overflow-hidden shadow-lg border border-[#E4E4E7] bg-neutral-950 relative flex items-center justify-center group cursor-pointer"
           >
             {/* Background Artwork */}
-            <img
-              src="/shopify_assets/hero.png"
-              alt="ValorVault Process walkthrough"
-              className="w-full h-full object-cover opacity-60 group-hover:scale-103 transition-transform duration-500 ease-out"
-            />
+            <picture>
+              <source srcSet="/shopify_assets/hero.webp" type="image/webp" />
+              <img
+                src="/shopify_assets/hero.png"
+                alt="ValorVault Process walkthrough"
+                loading="lazy"
+                decoding="async"
+                className="w-full h-full object-cover opacity-60 group-hover:scale-103 transition-transform duration-500 ease-out"
+              />
+            </picture>
             
             {/* Darker Overlay */}
             <div className="absolute inset-0 bg-black/55 backdrop-blur-[1px]" />
