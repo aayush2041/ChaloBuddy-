@@ -16,8 +16,13 @@ import {
   Mail,
   Clock,
   XCircle,
-  AlertTriangle
+  AlertTriangle,
+  Play,
+  Video,
+  Film,
+  Image as ImageIcon
 } from 'lucide-react';
+import { getYouTubeEmbedUrl, isDirectVideoUrl, parseProductImages, getYouTubeThumbnailUrl } from '../utils/mediaUtils';
 
 export default function ProductDetailPage() {
   const { currentRoute, navigate, addToCart, setIsCartOpen, requireAuth } = useStore();
@@ -27,6 +32,7 @@ export default function ProductDetailPage() {
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState(0);
+  const [activeMediaType, setActiveMediaType] = useState('image'); // 'image' | 'video'
   const [quantity, setQuantity] = useState(1);
   const [openAccordion, setOpenAccordion] = useState('delivery');
 
@@ -40,9 +46,13 @@ export default function ProductDetailPage() {
           const match = items.find(p => String(p.id) === String(productIdOrSlug) || p.slug === productIdOrSlug);
           if (match) {
             setProduct(match);
+            setSelectedImage(0);
+            setActiveMediaType('image');
             setRelatedProducts(items.filter(p => String(p.id) !== String(match.id)).slice(0, 4));
           } else {
             setProduct(items[0]);
+            setSelectedImage(0);
+            setActiveMediaType('image');
             setRelatedProducts(items.slice(1, 5));
           }
         }
@@ -66,19 +76,19 @@ export default function ProductDetailPage() {
 
   if (!product) return null;
 
-  let images = [];
-  try {
-    images = typeof product.images === 'string' ? JSON.parse(product.images) : product.images || [];
-  } catch {
-    images = [];
-  }
-  if (!images.length) {
-    images = [
-      product.image || '/shopify_assets/hero.png',
-      '/shopify_assets/valorant.jpg',
-      '/shopify_assets/bgmi.jpg'
-    ];
-  }
+  const rawImages = parseProductImages(product.images);
+  const images = rawImages.length > 0
+    ? rawImages
+    : [
+        product.image || '/shopify_assets/hero.png',
+        '/shopify_assets/valorant.jpg',
+        '/shopify_assets/bgmi.jpg'
+      ];
+
+  const hasVideo = Boolean(product.video_url?.trim());
+  const ytEmbedUrl = hasVideo ? getYouTubeEmbedUrl(product.video_url) : null;
+  const isDirectVideo = hasVideo ? isDirectVideoUrl(product.video_url) : false;
+  const ytThumb = hasVideo ? getYouTubeThumbnailUrl(product.video_url) : null;
 
   const priceNum = Number(product.price) || 0;
   const originalPriceNum = Number(product.original_price || product.compareAtPrice) || 0;
@@ -121,34 +131,158 @@ export default function ProductDetailPage() {
         {/* Main Product Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14">
           
-          {/* Left Column: Media Gallery */}
-          <div className="lg:col-span-7 space-y-4">
-            {/* Main Image */}
-            <div className="w-full aspect-[16/10] bg-neutral-100 border border-[#E4E4E7] rounded-2xl overflow-hidden flex items-center justify-center shadow-xs">
-              <img
-                src={images[selectedImage] || product.image || '/shopify_assets/hero.png'}
-                alt={product.title || product.name}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  e.currentTarget.src = '/shopify_assets/hero.png';
-                }}
-              />
-            </div>
+          {/* Left Column: Media Gallery (Multiple Images & Video Showcase) */}
+          <div className="lg:col-span-7 space-y-3.5">
+            {/* Media Gallery Controls (when video is attached) */}
+            {hasVideo && (
+              <div className="flex items-center justify-between">
+                <div className="inline-flex items-center p-1 rounded-xl bg-neutral-100 border border-[#E4E4E7] text-xs font-bold">
+                  <button
+                    type="button"
+                    onClick={() => setActiveMediaType('image')}
+                    className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+                      activeMediaType === 'image'
+                        ? 'bg-white text-[#09090B] shadow-xs'
+                        : 'text-[#71717A] hover:text-[#09090B]'
+                    }`}
+                  >
+                    <ImageIcon className="w-3.5 h-3.5" />
+                    <span>Photos ({images.length})</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveMediaType('video')}
+                    className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+                      activeMediaType === 'video'
+                        ? 'bg-[#7C4DFF] text-white shadow-xs'
+                        : 'text-[#71717A] hover:text-[#7C4DFF]'
+                    }`}
+                  >
+                    <Play className="w-3.5 h-3.5 fill-current" />
+                    <span>Video Showcase</span>
+                  </button>
+                </div>
 
-            {/* Thumbnail Row */}
-            {images.length > 1 && (
-              <div className="flex gap-3 overflow-x-auto pb-2">
+                <span className="text-[11px] font-semibold text-[#71717A] hidden sm:inline-flex items-center gap-1 bg-rose-50 text-rose-700 border border-rose-200 px-2 py-0.5 rounded-md">
+                  <Film className="w-3.5 h-3.5 text-rose-600" />
+                  <span>Verified Video Preview</span>
+                </span>
+              </div>
+            )}
+
+            {/* Main Media Viewport */}
+            {activeMediaType === 'video' && hasVideo ? (
+              <div className="relative w-full aspect-[16/10] bg-black border border-[#E4E4E7] rounded-2xl overflow-hidden shadow-xs">
+                {ytEmbedUrl ? (
+                  <iframe
+                    src={`${ytEmbedUrl}&autoplay=1`}
+                    title={product.title || product.name || 'Product Video Showcase'}
+                    className="w-full h-full border-0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                ) : isDirectVideo ? (
+                  <video
+                    src={product.video_url}
+                    controls
+                    autoPlay
+                    className="w-full h-full object-contain"
+                  >
+                    Your browser does not support HTML video.
+                  </video>
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center text-white">
+                    <Video className="w-10 h-10 text-white/50 mb-2" />
+                    <p className="text-sm font-bold">External Video Source</p>
+                    <a
+                      href={product.video_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-3 px-4 py-2 rounded-xl bg-[#7C4DFF] text-white text-xs font-bold hover:bg-[#6A3DE8] transition"
+                    >
+                      Watch Video in New Tab
+                    </a>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="relative w-full aspect-[16/10] bg-neutral-100 border border-[#E4E4E7] rounded-2xl overflow-hidden flex items-center justify-center shadow-xs group">
+                <img
+                  src={images[selectedImage] || product.image || '/shopify_assets/hero.png'}
+                  alt={product.title || product.name}
+                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-101"
+                  onError={(e) => {
+                    e.currentTarget.src = '/shopify_assets/hero.png';
+                  }}
+                />
+
+                {/* Floating "Watch Video" quick button on main image if video is attached */}
+                {hasVideo && (
+                  <button
+                    type="button"
+                    onClick={() => setActiveMediaType('video')}
+                    className="absolute bottom-3 right-3 z-10 bg-black/80 hover:bg-black text-white px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 backdrop-blur-xs transition shadow-md border border-white/20 cursor-pointer"
+                  >
+                    <Play className="w-3 h-3 fill-white text-white" />
+                    <span>Watch Video Showcase</span>
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Thumbnail Row (Images + Video Tile) */}
+            {(images.length > 1 || hasVideo) && (
+              <div className="flex gap-2.5 overflow-x-auto pb-2">
                 {images.map((img, idx) => (
                   <button
                     key={idx}
-                    onClick={() => setSelectedImage(idx)}
-                    className={`w-20 h-16 bg-neutral-100 rounded-xl border shrink-0 overflow-hidden cursor-pointer transition-all ${
-                      selectedImage === idx ? 'border-2 border-[#7C4DFF] shadow-xs' : 'border-[#E4E4E7] opacity-70 hover:opacity-100'
+                    onClick={() => {
+                      setSelectedImage(idx);
+                      setActiveMediaType('image');
+                    }}
+                    className={`relative w-20 h-14 bg-neutral-100 rounded-xl border shrink-0 overflow-hidden cursor-pointer transition-all ${
+                      activeMediaType === 'image' && selectedImage === idx
+                        ? 'border-2 border-[#7C4DFF] shadow-xs ring-2 ring-[#7C4DFF]/20 scale-102'
+                        : 'border-[#E4E4E7] opacity-75 hover:opacity-100'
                     }`}
                   >
-                    <img src={img} alt="Thumbnail" className="w-full h-full object-cover" />
+                    <img src={img} alt={`Thumbnail ${idx + 1}`} className="w-full h-full object-cover" />
+                    {idx === 0 && (
+                      <span className="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[8px] font-bold text-center py-0.5">
+                        COVER
+                      </span>
+                    )}
                   </button>
                 ))}
+
+                {/* Video Thumbnail Tile */}
+                {hasVideo && (
+                  <button
+                    type="button"
+                    onClick={() => setActiveMediaType('video')}
+                    className={`relative w-20 h-14 rounded-xl border shrink-0 overflow-hidden cursor-pointer transition-all bg-neutral-900 flex items-center justify-center ${
+                      activeMediaType === 'video'
+                        ? 'border-2 border-[#7C4DFF] shadow-xs ring-2 ring-[#7C4DFF]/30 scale-102'
+                        : 'border-[#E4E4E7] opacity-80 hover:opacity-100'
+                    }`}
+                  >
+                    {ytThumb ? (
+                      <img src={ytThumb} alt="Video thumbnail" className="w-full h-full object-cover opacity-60" />
+                    ) : images[0] ? (
+                      <img src={images[0]} alt="Video thumbnail" className="w-full h-full object-cover opacity-50" />
+                    ) : (
+                      <div className="w-full h-full bg-linear-to-br from-purple-900 to-black" />
+                    )}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/30">
+                      <div className="w-5 h-5 rounded-full bg-[#7C4DFF] text-white flex items-center justify-center shadow-xs">
+                        <Play className="w-2.5 h-2.5 fill-white translate-x-0.2" />
+                      </div>
+                      <span className="text-[8px] font-black text-white uppercase tracking-wider mt-0.5">
+                        Video
+                      </span>
+                    </div>
+                  </button>
+                )}
               </div>
             )}
           </div>

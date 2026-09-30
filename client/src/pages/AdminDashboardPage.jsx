@@ -44,8 +44,14 @@ import {
   Archive,
   CheckSquare,
   Square,
-  RefreshCw
+  RefreshCw,
+  Video,
+  Play,
+  Image as ImageIcon,
+  Film,
+  Star
 } from 'lucide-react';
+import { getYouTubeEmbedUrl, isDirectVideoUrl, parseProductImages } from '../utils/mediaUtils';
 
 export default function AdminDashboardPage() {
   const { currentUser, loginUser, logoutUser, addToast, settings, loadSettings, checkAdminQueue, navigate, loadProducts } = useStore();
@@ -111,13 +117,17 @@ export default function AdminDashboardPage() {
     badge: '',
     short_desc: '',
     description: '',
-    images: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800',
+    images: ['https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800'],
+    video_url: '',
     specs: '{"Rank": "Immortal 1", "Region": "AP / Mumbai"}',
     whats_included: 'Full Account Credentials\nOriginal First Recovery Email\nLifetime Escrow Warranty',
     initial_vault_item: ''
   };
   const [productForm, setProductForm] = useState(initialProductFormState);
   const [savingProduct, setSavingProduct] = useState(false);
+  const [newImageUrlInput, setNewImageUrlInput] = useState('');
+  const [imageInputMode, setImageInputMode] = useState('visual'); // 'visual' | 'batch'
+  const [batchImagesText, setBatchImagesText] = useState('https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800');
 
   // Product Delete Modal
   const [deletingProduct, setDeletingProduct] = useState(null);
@@ -412,22 +422,23 @@ export default function AdminDashboardPage() {
   // --- PRODUCT & INVENTORY MANAGEMENT HANDLERS ---
   const handleOpenAddProduct = () => {
     setProductModalMode('create');
+    const defaultImages = ['https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800'];
     setProductForm({
       ...initialProductFormState,
-      category_id: categories[0]?.id || 'cat_val'
+      category_id: categories[0]?.id || 'cat_val',
+      images: defaultImages,
+      video_url: ''
     });
+    setNewImageUrlInput('');
+    setBatchImagesText(defaultImages.join('\n'));
+    setImageInputMode('visual');
     setProductModalOpen(true);
   };
 
   const handleOpenEditProduct = (p) => {
     setActiveMenuProductId(null);
-    let imagesStr = '';
-    try {
-      const parsed = typeof p.images === 'string' ? JSON.parse(p.images) : p.images;
-      imagesStr = Array.isArray(parsed) ? parsed.join('\n') : (p.images || '');
-    } catch {
-      imagesStr = p.images || '';
-    }
+    const parsedImages = parseProductImages(p.images);
+    const imagesArr = parsedImages.length > 0 ? parsedImages : ['https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800'];
 
     let specsStr = '';
     try {
@@ -462,12 +473,62 @@ export default function AdminDashboardPage() {
       badge: p.badge || '',
       short_desc: p.short_desc || '',
       description: p.description || '',
-      images: imagesStr || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800',
+      images: imagesArr,
+      video_url: p.video_url || '',
       specs: specsStr || '{"Rank": "Immortal 1", "Region": "AP / Mumbai"}',
       whats_included: whatsIncludedStr,
       initial_vault_item: ''
     });
+    setNewImageUrlInput('');
+    setBatchImagesText(imagesArr.join('\n'));
+    setImageInputMode('visual');
     setProductModalOpen(true);
+  };
+
+  const handleAddImage = (urlToAdd) => {
+    const url = (urlToAdd || newImageUrlInput).trim();
+    if (!url) return;
+    setProductForm(prev => {
+      const current = Array.isArray(prev.images) ? prev.images : [];
+      if (current.includes(url)) {
+        addToast('Image URL is already added', 'warning');
+        return prev;
+      }
+      const updated = [...current, url];
+      setBatchImagesText(updated.join('\n'));
+      return { ...prev, images: updated };
+    });
+    setNewImageUrlInput('');
+  };
+
+  const handleRemoveImage = (indexToRemove) => {
+    setProductForm(prev => {
+      const current = Array.isArray(prev.images) ? prev.images : [];
+      const updated = current.filter((_, idx) => idx !== indexToRemove);
+      setBatchImagesText(updated.join('\n'));
+      return { ...prev, images: updated };
+    });
+  };
+
+  const handleSetCoverImage = (indexToCover) => {
+    setProductForm(prev => {
+      const current = Array.isArray(prev.images) ? [...prev.images] : [];
+      if (indexToCover <= 0 || indexToCover >= current.length) return prev;
+      const [cover] = current.splice(indexToCover, 1);
+      current.unshift(cover);
+      setBatchImagesText(current.join('\n'));
+      return { ...prev, images: current };
+    });
+    addToast('Primary cover image updated', 'success');
+  };
+
+  const handleSyncBatchImages = (text) => {
+    setBatchImagesText(text);
+    const parsed = text.split(/[\n,]/).map(s => s.trim()).filter(Boolean);
+    setProductForm(prev => ({
+      ...prev,
+      images: parsed
+    }));
   };
 
   const handleSaveProduct = async (e) => {
@@ -487,9 +548,13 @@ export default function AdminDashboardPage() {
 
     try {
       setSavingProduct(true);
-      const imagesArr = productForm.images
-        ? productForm.images.split(/[\n,]/).map(s => s.trim()).filter(Boolean)
-        : ['https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800'];
+      let imagesArr = Array.isArray(productForm.images) ? productForm.images.filter(Boolean) : [];
+      if (imagesArr.length === 0 && batchImagesText.trim()) {
+        imagesArr = batchImagesText.split(/[\n,]/).map(s => s.trim()).filter(Boolean);
+      }
+      if (imagesArr.length === 0) {
+        imagesArr = ['https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800'];
+      }
 
       let parsedSpecs = {};
       try {
@@ -511,6 +576,7 @@ export default function AdminDashboardPage() {
         low_stock_threshold: Number(productForm.low_stock_threshold) || 3,
         is_featured: productForm.is_featured ? 1 : 0,
         images: imagesArr,
+        video_url: productForm.video_url?.trim() || null,
         specs: parsedSpecs,
         whats_included: whatsIncludedArr
       };
@@ -2482,18 +2548,254 @@ export default function AdminDashboardPage() {
                   </label>
                 </div>
 
-                {/* Images */}
-                <div>
-                  <label className="block text-[#344054] font-bold mb-1">
-                    Image URL(s) (One URL per line or comma-separated)
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={productForm.images}
-                    onChange={(e) => setProductForm({ ...productForm, images: e.target.value })}
-                    className="w-full bg-[#F8F9FC] border border-[#E7E9F2] text-[#111426] rounded-xl p-2.5 font-mono text-xs focus:border-[#5B45F5] outline-none"
-                    placeholder="https://images.unsplash.com/..."
-                  />
+                {/* Product Media Manager: Multiple Images & Showcase Video */}
+                <div className="space-y-4 p-4 rounded-2xl bg-[#F8F9FC] border border-[#E7E9F2]">
+                  {/* Multiple Images Header & Mode Toggle */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#E7E9F2] pb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-[#5B45F5]/10 text-[#5B45F5] flex items-center justify-center font-bold">
+                        <ImageIcon className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="font-extrabold text-[#111426] flex items-center gap-2">
+                          <span>Product Images Gallery</span>
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#5B45F5]/10 text-[#5B45F5] font-bold">
+                            {(Array.isArray(productForm.images) ? productForm.images : []).length} images
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-[#667085]">The first image acts as the primary card cover across the store.</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center bg-white p-0.5 rounded-xl border border-[#E7E9F2] self-start sm:self-auto text-[11px]">
+                      <button
+                        type="button"
+                        onClick={() => setImageInputMode('visual')}
+                        className={`px-2.5 py-1 rounded-lg font-bold transition cursor-pointer ${
+                          imageInputMode === 'visual'
+                            ? 'bg-[#5B45F5] text-white shadow-xs'
+                            : 'text-[#667085] hover:text-[#111426]'
+                        }`}
+                      >
+                        Visual Grid
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setImageInputMode('batch')}
+                        className={`px-2.5 py-1 rounded-lg font-bold transition cursor-pointer ${
+                          imageInputMode === 'batch'
+                            ? 'bg-[#5B45F5] text-white shadow-xs'
+                            : 'text-[#667085] hover:text-[#111426]'
+                        }`}
+                      >
+                        Batch Edit
+                      </button>
+                    </div>
+                  </div>
+
+                  {imageInputMode === 'visual' ? (
+                    <div className="space-y-3">
+                      {/* Add Image URL bar */}
+                      <div className="flex gap-2">
+                        <input
+                          type="url"
+                          placeholder="Paste image URL (e.g. https://... or /shopify_assets/...)"
+                          value={newImageUrlInput}
+                          onChange={(e) => setNewImageUrlInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleAddImage();
+                            }
+                          }}
+                          className="flex-1 bg-white border border-[#E7E9F2] text-[#111426] rounded-xl px-3 py-2 text-xs focus:border-[#5B45F5] outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleAddImage()}
+                          disabled={!newImageUrlInput.trim()}
+                          className="px-3.5 py-2 rounded-xl bg-[#5B45F5] hover:bg-[#4B38D3] disabled:opacity-40 text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shrink-0 shadow-xs"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Add Image</span>
+                        </button>
+                      </div>
+
+                      {/* Image Thumbnails Grid */}
+                      {Array.isArray(productForm.images) && productForm.images.length > 0 ? (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 max-h-56 overflow-y-auto p-1">
+                          {productForm.images.map((imgUrl, index) => {
+                            const isCover = index === 0;
+                            return (
+                              <div
+                                key={index}
+                                className={`group relative rounded-xl overflow-hidden border transition-all ${
+                                  isCover
+                                    ? 'border-2 border-[#5B45F5] shadow-xs'
+                                    : 'border-[#E7E9F2] hover:border-[#5B45F5]/50 bg-white'
+                                }`}
+                              >
+                                <div className="aspect-[16/10] bg-neutral-100 overflow-hidden">
+                                  <img
+                                    src={imgUrl}
+                                    alt={`Product media ${index + 1}`}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                      e.currentTarget.src = '/shopify_assets/hero.png';
+                                    }}
+                                  />
+                                </div>
+
+                                {/* Badges */}
+                                <div className="absolute top-1.5 left-1.5 flex items-center gap-1">
+                                  {isCover ? (
+                                    <span className="bg-[#5B45F5] text-white text-[9px] font-black uppercase px-1.5 py-0.5 rounded shadow-xs flex items-center gap-0.5">
+                                      <Star className="w-2.5 h-2.5 fill-white" />
+                                      <span>Cover</span>
+                                    </span>
+                                  ) : (
+                                    <span className="bg-black/60 text-white text-[9px] font-mono font-bold px-1.5 py-0.5 rounded">
+                                      #{index + 1}
+                                    </span>
+                                  )}
+                                </div>
+
+                                {/* Hover Actions Overlay */}
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 p-1">
+                                  {!isCover && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSetCoverImage(index)}
+                                      title="Set as Primary Cover"
+                                      className="px-2 py-1 rounded-lg bg-white text-[#111426] hover:bg-[#EEF0FF] hover:text-[#5B45F5] text-[10px] font-bold shadow-xs transition cursor-pointer flex items-center gap-1"
+                                    >
+                                      <Star className="w-3 h-3 text-[#5B45F5]" />
+                                      <span>Make Cover</span>
+                                    </button>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveImage(index)}
+                                    title="Delete Image"
+                                    className="p-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white shadow-xs transition cursor-pointer"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="py-6 text-center border border-dashed border-[#E7E9F2] rounded-xl bg-white/50">
+                          <ImageIcon className="w-6 h-6 text-[#98A2B3] mx-auto mb-1" />
+                          <p className="text-xs font-bold text-[#667085]">No product images added</p>
+                          <p className="text-[11px] text-[#98A2B3]">Paste an image URL above to add to this listing</p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div>
+                      <textarea
+                        rows={3}
+                        value={batchImagesText}
+                        onChange={(e) => handleSyncBatchImages(e.target.value)}
+                        className="w-full bg-white border border-[#E7E9F2] text-[#111426] rounded-xl p-2.5 font-mono text-xs focus:border-[#5B45F5] outline-none"
+                        placeholder="https://images.unsplash.com/photo-1...&#10;https://images.unsplash.com/photo-2..."
+                      />
+                      <p className="text-[11px] text-[#667085] mt-1">
+                        Paste multiple URLs separated by newlines or commas. The first URL is the primary cover image.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* SHOWCASE VIDEO URL */}
+                  <div className="pt-3 border-t border-[#E7E9F2] space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-lg bg-rose-500/10 text-rose-600 flex items-center justify-center font-bold">
+                          <Film className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="font-extrabold text-[#111426] flex items-center gap-2">
+                            <span>Product Showcase Video</span>
+                            <span className="text-[10px] text-[#667085] font-semibold">(Optional)</span>
+                          </div>
+                          <p className="text-[11px] text-[#667085]">
+                            Supports YouTube (watch/embed/shorts) or direct MP4/WebM video link.
+                          </p>
+                        </div>
+                      </div>
+                      {productForm.video_url && (
+                        <button
+                          type="button"
+                          onClick={() => setProductForm({ ...productForm, video_url: '' })}
+                          className="text-[11px] text-rose-600 hover:text-rose-700 font-bold hover:underline cursor-pointer"
+                        >
+                          Remove Video
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#98A2B3]">
+                        <Video className="w-4 h-4" />
+                      </div>
+                      <input
+                        type="url"
+                        placeholder="e.g. https://www.youtube.com/watch?v=dQw4w9WgXcQ or https://example.com/demo.mp4"
+                        value={productForm.video_url || ''}
+                        onChange={(e) => setProductForm({ ...productForm, video_url: e.target.value })}
+                        className="w-full bg-white border border-[#E7E9F2] text-[#111426] rounded-xl pl-9 pr-3 py-2 text-xs focus:border-[#5B45F5] outline-none"
+                      />
+                    </div>
+
+                    {/* Real-time Video Preview */}
+                    {Boolean(productForm.video_url?.trim()) && (
+                      <div className="mt-2 p-2.5 rounded-xl bg-white border border-[#E7E9F2] space-y-1.5">
+                        <div className="flex items-center justify-between text-[11px] font-bold text-[#344054]">
+                          <span className="flex items-center gap-1.5 text-emerald-700">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Live Video Player Preview</span>
+                          </span>
+                          <a
+                            href={productForm.video_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-[#5B45F5] hover:underline flex items-center gap-1"
+                          >
+                            <span>Open URL</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        </div>
+
+                        {getYouTubeEmbedUrl(productForm.video_url) ? (
+                          <div className="relative aspect-video w-full rounded-lg overflow-hidden bg-black shadow-xs">
+                            <iframe
+                              src={getYouTubeEmbedUrl(productForm.video_url)}
+                              title="Product Video Preview"
+                              className="w-full h-full border-0"
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              allowFullScreen
+                            />
+                          </div>
+                        ) : isDirectVideoUrl(productForm.video_url) ? (
+                          <div className="relative aspect-video w-full rounded-lg overflow-hidden bg-black">
+                            <video
+                              src={productForm.video_url}
+                              controls
+                              className="w-full h-full object-contain"
+                            >
+                              Your browser does not support HTML video.
+                            </video>
+                          </div>
+                        ) : (
+                          <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-xs">
+                            Video URL added. Make sure it is a valid YouTube link (e.g., https://youtube.com/watch?v=...) or direct .mp4 link to enable the inline preview player.
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Description */}
@@ -3203,19 +3505,73 @@ export default function AdminDashboardPage() {
               </div>
 
               {(() => {
-                let images = [];
-                try {
-                  images = typeof detailsProduct.images === 'string' ? JSON.parse(detailsProduct.images) : detailsProduct.images || [];
-                } catch {
-                  images = [];
-                }
-                const img = images[0] || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800';
+                const images = parseProductImages(detailsProduct.images);
+                const displayImages = images.length > 0 ? images : ['https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800'];
                 return (
-                  <img
-                    src={img}
-                    alt={detailsProduct.name}
-                    className="w-full h-44 object-cover rounded-2xl border border-[#E7E9F2]"
-                  />
+                  <div className="space-y-2">
+                    <div className="w-full h-48 bg-neutral-100 rounded-2xl border border-[#E7E9F2] overflow-hidden">
+                      <img
+                        src={displayImages[0]}
+                        alt={detailsProduct.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.src = '/shopify_assets/hero.png';
+                        }}
+                      />
+                    </div>
+                    {displayImages.length > 1 && (
+                      <div className="flex gap-2 overflow-x-auto pb-1">
+                        {displayImages.map((img, i) => (
+                          <div key={i} className="relative w-14 h-10 rounded-lg overflow-hidden border border-[#E7E9F2] shrink-0">
+                            <img src={img} alt="" className="w-full h-full object-cover" />
+                            {i === 0 && (
+                              <span className="absolute bottom-0 inset-x-0 bg-[#5B45F5] text-white text-[8px] font-bold text-center py-0.2">
+                                COVER
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {detailsProduct.video_url && (
+                      <div className="p-2.5 rounded-xl bg-[#F8F9FC] border border-[#E7E9F2] space-y-1.5">
+                        <div className="flex items-center justify-between text-[11px] font-bold">
+                          <span className="flex items-center gap-1.5 text-rose-600">
+                            <Film className="w-3.5 h-3.5" />
+                            <span>Showcase Video Attached</span>
+                          </span>
+                          <a
+                            href={detailsProduct.video_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-[#5B45F5] hover:underline flex items-center gap-1"
+                          >
+                            <span>Open URL</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        </div>
+                        {getYouTubeEmbedUrl(detailsProduct.video_url) ? (
+                          <div className="relative aspect-video w-full rounded-lg overflow-hidden bg-black shadow-xs">
+                            <iframe
+                              src={getYouTubeEmbedUrl(detailsProduct.video_url)}
+                              title="Product Video"
+                              className="w-full h-full border-0"
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              allowFullScreen
+                            />
+                          </div>
+                        ) : isDirectVideoUrl(detailsProduct.video_url) ? (
+                          <div className="relative aspect-video w-full rounded-lg overflow-hidden bg-black">
+                            <video
+                              src={detailsProduct.video_url}
+                              controls
+                              className="w-full h-full object-contain"
+                            />
+                          </div>
+                        ) : null}
+                      </div>
+                    )}
+                  </div>
                 );
               })()}
 

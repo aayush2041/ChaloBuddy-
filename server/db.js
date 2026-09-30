@@ -61,6 +61,7 @@ export function initDatabase() {
       whats_included TEXT, -- JSON string array
       terms TEXT,
       refund_policy TEXT,
+      video_url TEXT,
       status TEXT DEFAULT 'active',
       is_featured INTEGER DEFAULT 0,
       is_deal INTEGER DEFAULT 0,
@@ -283,6 +284,7 @@ export function initDatabase() {
   safeAddCol('products', 'tags', "TEXT DEFAULT '[]'");
   safeAddCol('products', 'low_stock_threshold', 'INTEGER DEFAULT 5');
   safeAddCol('products', 'discount_price', 'REAL');
+  safeAddCol('products', 'video_url', 'TEXT');
 
   safeAddCol('inventory_vault', 'title', 'TEXT');
   safeAddCol('inventory_vault', 'status', "TEXT DEFAULT 'AVAILABLE'");

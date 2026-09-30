@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useStore } from '../context/StoreContext';
-import { ShoppingBag, Check, ShieldCheck } from 'lucide-react';
+import { ShoppingBag, Check, ShieldCheck, Play } from 'lucide-react';
 
 export default function ProductCard({
   product,
@@ -74,6 +74,22 @@ export default function ProductCard({
             <ShieldCheck className="w-3 h-3 text-emerald-600" />
             <span>Verified</span>
           </span>
+        </div>
+
+        {/* Video & Multiple Images Indicators */}
+        <div className="absolute bottom-2.5 left-2.5 right-2.5 z-10 flex items-center justify-between pointer-events-none">
+          {product.video_url ? (
+            <span className="bg-black/80 backdrop-blur-xs text-white text-[9px] font-bold px-2 py-0.5 rounded-md border border-white/20 flex items-center gap-1 shadow-xs">
+              <Play className="w-2.5 h-2.5 fill-white text-white" />
+              <span>VIDEO</span>
+            </span>
+          ) : <span />}
+
+          {images.length > 1 && (
+            <span className="bg-black/70 backdrop-blur-xs text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md border border-white/20 shadow-xs">
+              +{images.length}
+            </span>
+          )}
         </div>
       </div>
 

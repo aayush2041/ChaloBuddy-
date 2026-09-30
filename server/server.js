@@ -531,6 +531,7 @@ app.post('/api/products', requireAdmin, (req, res) => {
       whats_included = [],
       terms,
       refund_policy,
+      video_url,
       status = 'active',
       is_featured = 0,
       is_deal = 0,
@@ -565,9 +566,9 @@ app.post('/api/products', requireAdmin, (req, res) => {
       INSERT INTO products (
         id, category_id, name, sku, slug, product_type, description, short_desc, sub_label,
         price, original_price, discount_price, discount_percent, stock, low_stock_threshold,
-        delivery_type, images, specs, whats_included, terms, refund_policy,
+        delivery_type, images, specs, whats_included, terms, refund_policy, video_url,
         status, is_featured, is_deal, tags
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       productId,
       category_id,
@@ -590,6 +591,7 @@ app.post('/api/products', requireAdmin, (req, res) => {
       typeof whats_included === 'string' ? whats_included : JSON.stringify(whats_included || []),
       terms || 'Standard ValorVault terms apply.',
       refund_policy || 'Full refund if login credentials fail initial verification.',
+      video_url ? video_url.trim() : null,
       status || 'active',
       is_featured ? 1 : 0,
       is_deal ? 1 : 0,
@@ -638,7 +640,7 @@ app.put('/api/products/:id', requireAdmin, (req, res) => {
       name, category_id, sku, product_type, price, original_price, discount_price,
       discount_percent, stock, low_stock_threshold, delivery_type, description,
       short_desc, sub_label, status, is_featured, is_deal, specs, whats_included,
-      images, terms, refund_policy, tags, admin_name = 'Admin'
+      images, terms, refund_policy, video_url, tags, admin_name = 'Admin'
     } = req.body;
 
     if (name !== undefined && !name.trim()) {
@@ -701,6 +703,7 @@ app.put('/api/products/:id', requireAdmin, (req, res) => {
         whats_included = COALESCE(?, whats_included),
         terms = COALESCE(?, terms),
         refund_policy = COALESCE(?, refund_policy),
+        video_url = COALESCE(?, video_url),
         tags = ?
       WHERE id = ?
     `).run(
@@ -726,6 +729,7 @@ app.put('/api/products/:id', requireAdmin, (req, res) => {
       whats_included ? (typeof whats_included === 'string' ? whats_included : JSON.stringify(whats_included)) : null,
       terms || null,
       refund_policy || null,
+      video_url !== undefined ? (video_url ? video_url.trim() : '') : null,
       tagsVal,
       id
     );
@@ -840,16 +844,16 @@ app.post('/api/products/:id/duplicate', requireAdmin, (req, res) => {
       INSERT INTO products (
         id, category_id, name, sku, slug, product_type, description, short_desc, sub_label,
         price, original_price, discount_price, discount_percent, stock, low_stock_threshold,
-        delivery_type, images, specs, features, whats_included, terms, refund_policy,
+        delivery_type, images, specs, features, whats_included, terms, refund_policy, video_url,
         status, is_featured, is_deal, tags
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       newId, orig.category_id, newName, newSku, newSlug, orig.product_type || 'account',
       orig.description, orig.short_desc, orig.sub_label,
       orig.price, orig.original_price, orig.discount_price, orig.discount_percent,
       0, orig.low_stock_threshold || 5,
       orig.delivery_type, orig.images, orig.specs, orig.features, orig.whats_included,
-      orig.terms, orig.refund_policy,
+      orig.terms, orig.refund_policy, orig.video_url || null,
       'draft',
       0, 0, orig.tags || '[]'
     );
