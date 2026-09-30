@@ -49,8 +49,7 @@ import {
   Play,
   Image as ImageIcon,
   Film,
-  Star,
-  SlidersHorizontal
+  Star
 } from 'lucide-react';
 import { getYouTubeEmbedUrl, isDirectVideoUrl, parseProductImages } from '../utils/mediaUtils';
 
@@ -2988,7 +2987,7 @@ export default function AdminDashboardPage() {
                 <div className="space-y-4 text-xs">
                   <div className="p-5 rounded-2xl bg-white border border-[#E7E9F2] space-y-4">
                     <h4 className="font-extrabold text-[#111426] text-sm flex items-center gap-2">
-                      <SlidersHorizontal className="w-4 h-4 text-[#5B45F5]" />
+                      <Boxes className="w-4 h-4 text-[#5B45F5]" />
                       <span>Adjust Physical / Virtual Stock Level</span>
                     </h4>
 

@@ -28,8 +28,13 @@ class ErrorBoundary extends React.Component {
           </p>
           <button
             onClick={() => {
+              try {
+                if ('caches' in window) {
+                  caches.keys().then(names => names.forEach(name => caches.delete(name)));
+                }
+              } catch {}
               window.location.hash = '';
-              window.location.reload();
+              window.location.href = window.location.pathname + '?v=' + Date.now();
             }}
             style={{ padding: '12px 24px', backgroundColor: '#000', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 'bold', textTransform: 'uppercase' }}
           >

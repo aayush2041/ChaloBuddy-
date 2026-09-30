@@ -3,7 +3,7 @@ import { useStore } from '../context/StoreContext';
 import { api } from '../api';
 import ProductCard from '../components/ProductCard';
 import {
-  SlidersHorizontal,
+  Filter,
   Search,
   X,
   ChevronDown,
@@ -208,7 +208,7 @@ export default function CatalogPage() {
               onClick={() => setFilterDrawerOpen(!filterDrawerOpen)}
               className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider px-3.5 py-2 border border-[#E4E4E7] hover:border-[#09090B] rounded-xl transition cursor-pointer bg-white"
             >
-              <SlidersHorizontal className="w-3.5 h-3.5 text-[#7C4DFF]" />
+              <Filter className="w-3.5 h-3.5 text-[#7C4DFF]" />
               <span>Filters</span>
             </button>
           </div>

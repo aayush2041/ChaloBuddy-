@@ -12,7 +12,7 @@ import {
   Key,
   ShieldCheck,
   Headphones,
-  SlidersHorizontal
+  Settings
 } from 'lucide-react';
 import SearchModal from './SearchModal';
 
@@ -198,7 +198,7 @@ export default function Navbar() {
                           }}
                           className="w-full text-left px-4 py-2 text-xs font-bold text-[#7C4DFF] hover:bg-[#F1ECFF]/50 flex items-center gap-2 border-t border-[#F4F4F5] cursor-pointer transition-colors"
                         >
-                          <SlidersHorizontal className="w-3.5 h-3.5" />
+                          <Settings className="w-3.5 h-3.5" />
                           Admin Console
                         </button>
                       )}
