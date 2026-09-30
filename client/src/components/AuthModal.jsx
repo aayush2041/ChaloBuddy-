@@ -54,28 +54,6 @@ export default function AuthModal() {
     }
   };
 
-  const handleDemoLogin = (role) => {
-    if (role === 'customer') {
-      loginUser({
-        id: 'usr_cust_01',
-        name: 'Aayush Sharma',
-        email: 'player@gmail.com',
-        phone: '+91 98112 23344',
-        role: 'customer',
-        avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'
-      });
-    } else {
-      loginUser({
-        id: 'usr_admin_01',
-        name: 'ValorVault Admin',
-        email: 'admin@valorvault.gg',
-        phone: '+91 98765 43210',
-        role: 'admin',
-        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'
-      });
-    }
-  };
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in duration-150">
       <div className="relative w-full max-w-md bg-white border border-[#E7E9F2] rounded-3xl shadow-2xl p-6 sm:p-8 space-y-6 text-[#111426]">
@@ -221,27 +199,6 @@ export default function AuthModal() {
             </button>
           </div>
         </form>
-
-        {/* Demo Fast-Login Helper */}
-        <div className="pt-2 border-t border-[#F1F3F9] text-center space-y-2">
-          <p className="text-[11px] font-semibold text-[#667085]">Instant Demo Login:</p>
-          <div className="flex justify-center gap-2">
-            <button
-              type="button"
-              onClick={() => handleDemoLogin('customer')}
-              className="px-3 py-1.5 rounded-lg bg-[#F8F9FC] hover:bg-[#EEF0FF] border border-[#E7E9F2] text-[11px] font-bold text-[#111426] hover:text-[#5B45F5] transition cursor-pointer"
-            >
-              Verified Customer
-            </button>
-            <button
-              type="button"
-              onClick={() => handleDemoLogin('admin')}
-              className="px-3 py-1.5 rounded-lg bg-[#F8F9FC] hover:bg-[#EEF0FF] border border-[#E7E9F2] text-[11px] font-bold text-[#111426] hover:text-[#5B45F5] transition cursor-pointer"
-            >
-              Master Admin
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );

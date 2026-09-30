@@ -5,8 +5,8 @@ import { Lock, Mail, ArrowRight, ShieldCheck, User } from 'lucide-react';
 
 export default function LoginPage() {
   const { loginUser, navigate, addToast } = useStore();
-  const [email, setEmail] = useState('player@gmail.com');
-  const [password, setPassword] = useState('player123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
@@ -17,7 +17,11 @@ export default function LoginPage() {
       const res = await api.login(email, password);
       if (res.success && res.user) {
         loginUser(res.user);
-        navigate('account');
+        if (res.user.role === 'admin') {
+          navigate('admin');
+        } else {
+          navigate('account');
+        }
       } else {
         addToast(res.error || 'Invalid email or password', 'error');
       }
@@ -25,30 +29,6 @@ export default function LoginPage() {
       addToast('Failed to sign in. Please verify your details.', 'error');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleQuickDemo = (role) => {
-    if (role === 'customer') {
-      loginUser({
-        id: 'usr_cust_01',
-        name: 'Aayush Sharma',
-        email: 'player@gmail.com',
-        phone: '+91 98112 23344',
-        role: 'customer',
-        avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'
-      });
-      navigate('account');
-    } else {
-      loginUser({
-        id: 'usr_admin_01',
-        name: 'ValorVault Admin',
-        email: 'admin@valorvault.gg',
-        phone: '+91 98765 43210',
-        role: 'admin',
-        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'
-      });
-      navigate('admin');
     }
   };
 
@@ -64,30 +44,6 @@ export default function LoginPage() {
           <p className="text-xs text-[#667085] leading-relaxed max-w-xs mx-auto">
             Login to your ValorVault account to manage orders and access your digital vault.
           </p>
-        </div>
-
-        {/* Quick Demo Access Bar */}
-        <div className="p-3.5 rounded-2xl bg-[#F8F9FC] border border-[#E7E9F2] space-y-2">
-          <div className="text-[11px] font-bold text-[#667085] flex items-center justify-between">
-            <span>Instant Demo Accounts:</span>
-            <span className="text-[#5B45F5] font-extrabold text-[10px]">1-Click Login</span>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => handleQuickDemo('customer')}
-              className="py-2 px-3 rounded-xl bg-white hover:bg-gray-50 border border-[#E7E9F2] text-xs font-bold text-[#111426] transition shadow-2xs cursor-pointer"
-            >
-              Customer Demo
-            </button>
-            <button
-              type="button"
-              onClick={() => handleQuickDemo('admin')}
-              className="py-2 px-3 rounded-xl bg-white hover:bg-gray-50 border border-[#E7E9F2] text-xs font-bold text-[#5B45F5] transition shadow-2xs cursor-pointer"
-            >
-              Admin Demo
-            </button>
-          </div>
         </div>
 
         {/* Form */}

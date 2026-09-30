@@ -8,15 +8,16 @@ export function StoreProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(() => {
     try {
       const saved = localStorage.getItem('vv_user');
-      if (saved) return JSON.parse(saved);
-      return {
-        id: 'usr_cust_01',
-        name: 'Aayush Sharma',
-        email: 'player@gmail.com',
-        phone: '+91 98112 23344',
-        role: 'customer',
-        avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'
-      };
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Clear any old mock demo customer if role is customer and id is usr_cust_01
+        if (parsed?.id === 'usr_cust_01' && parsed?.email === 'player@gmail.com') {
+          localStorage.removeItem('vv_user');
+          return null;
+        }
+        return parsed;
+      }
+      return null;
     } catch {
       return null;
     }
@@ -99,12 +100,17 @@ export function StoreProvider({ children }) {
   useEffect(() => {
     loadProducts();
     loadSettings();
-    checkAdminQueue();
-    const interval = setInterval(() => {
-      checkAdminQueue();
-    }, 15000);
-    return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (currentUser?.role === 'admin') {
+      checkAdminQueue();
+      const interval = setInterval(() => {
+        checkAdminQueue();
+      }, 20000);
+      return () => clearInterval(interval);
+    }
+  }, [currentUser]);
 
   const loadProducts = async () => {
     try {
@@ -134,9 +140,10 @@ export function StoreProvider({ children }) {
   };
 
   const checkAdminQueue = async () => {
+    if (currentUser?.role !== 'admin') return;
     try {
       const data = await api.getVerificationQueue();
-      if (data.success) {
+      if (data && data.success) {
         setPendingQueueCount(data.count || 0);
       }
     } catch {
@@ -260,33 +267,8 @@ export function StoreProvider({ children }) {
     navigate('home');
   };
 
-  const switchRole = (role) => {
-    if (role === 'admin') {
-      const adminUser = {
-        id: 'usr_admin_01',
-        name: 'ValorVault Admin',
-        email: 'admin@valorvault.gg',
-        role: 'admin',
-        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150'
-      };
-      setCurrentUser(adminUser);
-      setViewMode('admin');
-      navigate('admin');
-      addToast('Switched to Admin Role with Master Permissions', 'success');
-    } else {
-      const custUser = {
-        id: 'usr_cust_01',
-        name: 'Aayush Sharma',
-        email: 'player@gmail.com',
-        phone: '+91 98112 23344',
-        role: 'customer',
-        avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'
-      };
-      setCurrentUser(custUser);
-      setViewMode('store');
-      navigate('home');
-      addToast('Switched to Customer Storefront', 'info');
-    }
+  const switchRole = () => {
+    // Disabled in production
   };
 
   return (

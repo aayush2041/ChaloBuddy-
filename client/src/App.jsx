@@ -1,6 +1,5 @@
 import React, { useEffect } from 'react';
 import { useStore } from './context/StoreContext';
-import RoleSwitcherBar from './components/RoleSwitcherBar';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import CartDrawer from './components/CartDrawer';
@@ -126,9 +125,6 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#FFFFFF] text-[#000000] flex flex-col font-sans selection:bg-black selection:text-white pb-16 sm:pb-0">
-      {/* Top Test Role Switcher Banner */}
-      <RoleSwitcherBar />
-
       {/* Global Navbar */}
       <Navbar />
 

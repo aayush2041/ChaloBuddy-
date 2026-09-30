@@ -26,11 +26,20 @@ import {
   RotateCcw,
   FileText,
   Key,
-  MessageSquare
+  MessageSquare,
+  Lock,
+  Mail,
+  ArrowRight,
+  LogOut
 } from 'lucide-react';
 
 export default function AdminDashboardPage() {
-  const { addToast, settings, loadSettings, checkAdminQueue, navigate } = useStore();
+  const { currentUser, loginUser, logoutUser, addToast, settings, loadSettings, checkAdminQueue, navigate } = useStore();
+
+  const [adminEmail, setAdminEmail] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
+  const [authError, setAuthError] = useState('');
+  const [authLoading, setAuthLoading] = useState(false);
 
   const [activeTab, setActiveTab] = useState('queue'); // 'overview', 'queue', 'orders', 'products', 'coupons', 'tickets', 'settings', 'audit'
   const [stats, setStats] = useState(null);
@@ -92,9 +101,35 @@ export default function AdminDashboardPage() {
   const [orderSearch, setOrderSearch] = useState('');
   const [orderStatusFilter, setOrderStatusFilter] = useState('all');
 
+  const handleAdminAuth = async (e) => {
+    e.preventDefault();
+    setAuthLoading(true);
+    setAuthError('');
+    try {
+      const res = await api.login(adminEmail, adminPassword);
+      if (res.success && res.user) {
+        if (res.user.role === 'admin') {
+          loginUser(res.user);
+          addToast('Authenticated as Administrator', 'success');
+        } else {
+          setAuthError('Access Denied: This account does not have administrator privileges.');
+          addToast('Access Denied: Administrator role required', 'error');
+        }
+      } else {
+        setAuthError(res.error || 'Invalid administrator email or password.');
+      }
+    } catch {
+      setAuthError('Unable to connect to authentication server. Please try again.');
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
   useEffect(() => {
-    loadAllAdminData();
-  }, [activeTab]);
+    if (currentUser?.role === 'admin') {
+      loadAllAdminData();
+    }
+  }, [activeTab, currentUser]);
 
   const loadAllAdminData = async () => {
     try {
@@ -300,6 +335,93 @@ export default function AdminDashboardPage() {
     return matchSearch && matchStatus;
   });
 
+  if (!currentUser || currentUser.role !== 'admin') {
+    return (
+      <div className="bg-[#09090B] min-h-[90vh] flex items-center justify-center px-4 py-16 text-white selection:bg-[#7C4DFF] selection:text-white font-sans">
+        <div className="w-full max-w-md bg-[#121216] border border-[#27272A] rounded-3xl p-8 space-y-6 shadow-2xl relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-48 h-48 bg-[#7C4DFF]/10 rounded-full blur-3xl pointer-events-none" />
+
+          {/* Header */}
+          <div className="text-center space-y-2 relative z-10">
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#7C4DFF]/15 text-[#7C4DFF] border border-[#7C4DFF]/30 mb-2 shadow-lg">
+              <Lock className="w-7 h-7" />
+            </div>
+            <h1 className="text-2xl font-black uppercase tracking-tight text-white font-heading">
+              Admin Access Only
+            </h1>
+            <p className="text-xs text-[#A1A1AA] leading-relaxed max-w-xs mx-auto">
+              This area is restricted to ValorVault administrators. Please enter your authorized credentials to proceed.
+            </p>
+          </div>
+
+          {/* Error Banner */}
+          {authError && (
+            <div className="p-3.5 rounded-xl bg-red-950/60 border border-red-800/80 text-red-200 text-xs flex items-center gap-2.5">
+              <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
+              <span>{authError}</span>
+            </div>
+          )}
+
+          {/* Form */}
+          <form onSubmit={handleAdminAuth} className="space-y-4 text-xs relative z-10">
+            <div>
+              <label className="block text-[#D4D4D8] mb-1.5 font-bold uppercase tracking-wider text-[11px]">
+                Admin Email
+              </label>
+              <div className="relative">
+                <Mail className="w-4 h-4 text-[#71717A] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="email"
+                  required
+                  value={adminEmail}
+                  onChange={(e) => setAdminEmail(e.target.value)}
+                  placeholder="admin@valorvault.gg"
+                  className="w-full pl-10 pr-3.5 py-3 rounded-xl bg-[#18181B] border border-[#27272A] focus:border-[#7C4DFF] text-white outline-none transition placeholder-[#52525B]"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[#D4D4D8] mb-1.5 font-bold uppercase tracking-wider text-[11px]">
+                Master Password
+              </label>
+              <div className="relative">
+                <Lock className="w-4 h-4 text-[#71717A] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="password"
+                  required
+                  value={adminPassword}
+                  onChange={(e) => setAdminPassword(e.target.value)}
+                  placeholder="••••••••••••"
+                  className="w-full pl-10 pr-3.5 py-3 rounded-xl bg-[#18181B] border border-[#27272A] focus:border-[#7C4DFF] text-white outline-none transition placeholder-[#52525B]"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={authLoading}
+              className="w-full py-3.5 px-4 rounded-xl bg-[#7C4DFF] hover:bg-[#6D3DF5] text-white font-extrabold text-xs transition shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 mt-2"
+            >
+              <span>{authLoading ? 'Verifying Credentials...' : 'Authenticate & Unlock Vault'}</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </form>
+
+          <div className="text-center pt-2 border-t border-[#27272A] relative z-10">
+            <button
+              type="button"
+              onClick={() => navigate('home')}
+              className="text-xs text-[#71717A] hover:text-white transition cursor-pointer font-medium"
+            >
+              ← Return to Public Storefront
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-[#F8F9FC] min-h-screen py-8 text-[#111426]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
@@ -332,6 +454,16 @@ export default function AdminDashboardPage() {
               className="px-4 py-2.5 rounded-xl bg-[#5B45F5] hover:bg-[#4B38D3] text-white text-xs font-bold transition shadow-xs cursor-pointer"
             >
               View Storefront
+            </button>
+            <button
+              onClick={() => {
+                logoutUser();
+                navigate('home');
+              }}
+              className="px-4 py-2.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold border border-red-200 transition cursor-pointer flex items-center gap-1.5"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Sign Out</span>
             </button>
           </div>
         </div>

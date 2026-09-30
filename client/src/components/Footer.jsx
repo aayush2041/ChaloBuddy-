@@ -80,6 +80,11 @@ export default function Footer() {
                   Customer Vault
                 </button>
               </li>
+              <li>
+                <button onClick={() => navigate('admin')} className="hover:text-[#7C4DFF] transition-colors cursor-pointer text-xs text-neutral-400">
+                  Admin Portal
+                </button>
+              </li>
             </ul>
           </div>
 

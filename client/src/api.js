@@ -2,6 +2,33 @@
 
 const API_BASE = '/api';
 
+const getAuthHeaders = () => {
+  try {
+    const userStr = localStorage.getItem('vv_user');
+    if (userStr) {
+      const user = JSON.parse(userStr);
+      if (user && user.token) {
+        return { Authorization: `Bearer ${user.token}` };
+      }
+    }
+  } catch (e) {
+    // Ignore error
+  }
+  return {};
+};
+
+const authFetch = async (url, options = {}) => {
+  const headers = {
+    ...getAuthHeaders(),
+    ...(options.headers || {})
+  };
+  const res = await fetch(`${API_BASE}${url}`, {
+    ...options,
+    headers
+  });
+  return res.json();
+};
+
 export const api = {
   // Settings
   getSettings: async () => {
@@ -9,12 +36,11 @@ export const api = {
     return res.json();
   },
   updateSettings: async (settings, updatedBy = 'Admin') => {
-    const res = await fetch(`${API_BASE}/settings`, {
+    return authFetch('/settings', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ settings, updatedBy })
     });
-    return res.json();
   },
 
   // Auth
@@ -53,24 +79,21 @@ export const api = {
     return res.json();
   },
   createProduct: async (productData) => {
-    const res = await fetch(`${API_BASE}/products`, {
+    return authFetch('/products', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(productData)
     });
-    return res.json();
   },
   updateProduct: async (id, productData) => {
-    const res = await fetch(`${API_BASE}/products/${id}`, {
+    return authFetch(`/products/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(productData)
     });
-    return res.json();
   },
   deleteProduct: async (id) => {
-    const res = await fetch(`${API_BASE}/products/${id}`, { method: 'DELETE' });
-    return res.json();
+    return authFetch(`/products/${id}`, { method: 'DELETE' });
   },
 
   // Coupons
@@ -83,16 +106,17 @@ export const api = {
     return res.json();
   },
   getCoupons: async () => {
-    const res = await fetch(`${API_BASE}/coupons`);
-    return res.json();
+    return authFetch('/coupons');
   },
   createCoupon: async (couponData) => {
-    const res = await fetch(`${API_BASE}/coupons`, {
+    return authFetch('/coupons', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(couponData)
     });
-    return res.json();
+  },
+  deleteCoupon: async (id) => {
+    return authFetch(`/coupons/${id}`, { method: 'DELETE' });
   },
 
   // Orders
@@ -111,8 +135,7 @@ export const api = {
   },
   getAllOrders: async (filters = {}) => {
     const query = new URLSearchParams(filters);
-    const res = await fetch(`${API_BASE}/orders?${query.toString()}`);
-    return res.json();
+    return authFetch(`/orders?${query.toString()}`);
   },
   getOrderByIdOrNumber: async (idOrNumber) => {
     const res = await fetch(`${API_BASE}/orders/${idOrNumber}`);
@@ -121,7 +144,6 @@ export const api = {
 
   // Payments
   submitPayment: async (orderId, formData) => {
-    // Can be FormData or JSON
     let options = { method: 'POST' };
     if (formData instanceof FormData) {
       options.body = formData;
@@ -135,16 +157,14 @@ export const api = {
 
   // Admin Verification
   getVerificationQueue: async () => {
-    const res = await fetch(`${API_BASE}/admin/payments/queue`);
-    return res.json();
+    return authFetch('/admin/payments/queue');
   },
   verifyPayment: async (orderId, action, rejection_reason = '', admin_notes = '', verified_by = 'ValorVault Admin') => {
-    const res = await fetch(`${API_BASE}/admin/payments/${orderId}/verify`, {
+    return authFetch(`/admin/payments/${orderId}/verify`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action, rejection_reason, admin_notes, verified_by })
     });
-    return res.json();
   },
 
   // Deliveries
@@ -153,12 +173,11 @@ export const api = {
     return res.json();
   },
   adminDeliverOrder: async (orderId, delivery_data, delivery_notes, admin_name) => {
-    const res = await fetch(`${API_BASE}/admin/orders/${orderId}/deliver`, {
+    return authFetch(`/admin/orders/${orderId}/deliver`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ delivery_data, delivery_notes, admin_name })
     });
-    return res.json();
   },
   acknowledgeDelivery: async (orderId) => {
     const res = await fetch(`${API_BASE}/orders/${orderId}/acknowledge-delivery`, {
@@ -177,12 +196,11 @@ export const api = {
     return res.json();
   },
   decideRefund: async (orderId, decision, reason, admin_name) => {
-    const res = await fetch(`${API_BASE}/admin/orders/${orderId}/refund-decision`, {
+    return authFetch(`/admin/orders/${orderId}/refund-decision`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ decision, reason, admin_name })
     });
-    return res.json();
   },
 
   // Support Tickets
@@ -201,16 +219,14 @@ export const api = {
   },
   getAllTickets: async (filters = {}) => {
     const query = new URLSearchParams(filters);
-    const res = await fetch(`${API_BASE}/tickets?${query.toString()}`);
-    return res.json();
+    return authFetch(`/tickets?${query.toString()}`);
   },
   replyTicket: async (id, reply, status, admin_name) => {
-    const res = await fetch(`${API_BASE}/tickets/${id}/reply`, {
+    return authFetch(`/tickets/${id}/reply`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ reply, status, admin_name })
     });
-    return res.json();
   },
 
   // Reviews
@@ -229,11 +245,9 @@ export const api = {
 
   // Admin Stats & Audit Logs
   getAdminStats: async () => {
-    const res = await fetch(`${API_BASE}/admin/stats`);
-    return res.json();
+    return authFetch('/admin/stats');
   },
   getAuditLogs: async () => {
-    const res = await fetch(`${API_BASE}/admin/audit-logs`);
-    return res.json();
+    return authFetch('/admin/audit-logs');
   }
 };

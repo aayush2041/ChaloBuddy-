@@ -3,6 +3,7 @@ import cors from 'cors';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import db, { initDatabase } from './db.js';
 
@@ -14,6 +15,69 @@ initDatabase();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Admin & Security Configuration
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'admin@valorvault.gg').trim().toLowerCase();
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
+const JWT_SECRET = process.env.JWT_SECRET || 'vv_jwt_secret_key_2026_super_secure';
+
+// Upsert admin user on startup
+try {
+  const existingAdmin = db.prepare('SELECT id FROM users WHERE role = ?').get('admin');
+  if (existingAdmin) {
+    db.prepare('UPDATE users SET email = ?, password = ? WHERE id = ?').run(ADMIN_EMAIL, ADMIN_PASSWORD, existingAdmin.id);
+  } else {
+    db.prepare(`
+      INSERT INTO users (id, name, email, phone, role, password, avatar)
+      VALUES (?, ?, ?, ?, 'admin', ?, ?)
+    `).run('usr_admin_01', 'ValorVault Admin', ADMIN_EMAIL, '+91 98765 43210', ADMIN_PASSWORD, 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=150');
+  }
+} catch (e) {
+  console.warn('Could not sync admin credentials:', e.message);
+}
+
+function generateToken(user) {
+  const payload = {
+    id: user.id,
+    email: user.email,
+    role: user.role,
+    exp: Date.now() + 14 * 24 * 60 * 60 * 1000 // 14 days
+  };
+  const data = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const sig = crypto.createHmac('sha256', JWT_SECRET).update(data).digest('base64url');
+  return `${data}.${sig}`;
+}
+
+function verifyToken(token) {
+  if (!token || typeof token !== 'string') return null;
+  const parts = token.split('.');
+  if (parts.length !== 2) return null;
+  const [data, sig] = parts;
+  const expectedSig = crypto.createHmac('sha256', JWT_SECRET).update(data).digest('base64url');
+  if (sig !== expectedSig) return null;
+  try {
+    const payload = JSON.parse(Buffer.from(data, 'base64url').toString('utf8'));
+    if (payload.exp && payload.exp < Date.now()) return null;
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+// Middleware: Require Admin
+const requireAdmin = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ success: false, error: 'Unauthorized: Admin authentication token required' });
+  }
+  const token = authHeader.split(' ')[1];
+  const decoded = verifyToken(token);
+  if (!decoded || decoded.role !== 'admin') {
+    return res.status(403).json({ success: false, error: 'Forbidden: Valid administrator credentials required' });
+  }
+  req.adminUser = decoded;
+  next();
+};
 
 // Middleware
 app.use(cors());
@@ -76,7 +140,7 @@ app.get('/api/settings', (req, res) => {
   }
 });
 
-app.put('/api/settings', (req, res) => {
+app.put('/api/settings', requireAdmin, (req, res) => {
   try {
     const { settings, updatedBy = 'Admin' } = req.body;
     const stmt = db.prepare(`
@@ -115,7 +179,8 @@ app.post('/api/auth/login', (req, res) => {
       return res.status(401).json({ success: false, error: 'Invalid email or password' });
     }
 
-    res.json({ success: true, user });
+    const token = generateToken(user);
+    res.json({ success: true, user: { ...user, token } });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -144,7 +209,8 @@ app.post('/api/auth/register', (req, res) => {
     createAuditLog('USER', userId, 'REGISTER', name, 'customer', 'New customer registration');
 
     const newUser = { id: userId, name, email: email.trim().toLowerCase(), phone, role: 'customer', avatar };
-    res.status(201).json({ success: true, user: newUser });
+    const token = generateToken(newUser);
+    res.status(201).json({ success: true, user: { ...newUser, token } });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -318,7 +384,7 @@ app.get('/api/products/:idOrSlug', (req, res) => {
 });
 
 // Admin Product Create
-app.post('/api/products', (req, res) => {
+app.post('/api/products', requireAdmin, (req, res) => {
   try {
     const {
       category_id, name, slug, description, short_desc, price, original_price,
@@ -379,7 +445,7 @@ app.post('/api/products', (req, res) => {
 });
 
 // Admin Product Update
-app.put('/api/products/:id', (req, res) => {
+app.put('/api/products/:id', requireAdmin, (req, res) => {
   try {
     const { id } = req.params;
     const {
@@ -433,7 +499,7 @@ app.put('/api/products/:id', (req, res) => {
 });
 
 // Admin Product Delete
-app.delete('/api/products/:id', (req, res) => {
+app.delete('/api/products/:id', requireAdmin, (req, res) => {
   try {
     const { id } = req.params;
     db.prepare('DELETE FROM products WHERE id = ?').run(id);
@@ -500,7 +566,7 @@ app.post('/api/coupons/validate', (req, res) => {
   }
 });
 
-app.get('/api/coupons', (req, res) => {
+app.get('/api/coupons', requireAdmin, (req, res) => {
   try {
     const coupons = db.prepare('SELECT * FROM coupons ORDER BY created_at DESC').all();
     res.json({ success: true, coupons });
@@ -509,7 +575,7 @@ app.get('/api/coupons', (req, res) => {
   }
 });
 
-app.post('/api/coupons', (req, res) => {
+app.post('/api/coupons', requireAdmin, (req, res) => {
   try {
     const { code, discount_type, discount_value, min_order_value = 0, max_uses = 100, expiry_date, applicable_category_id } = req.body;
     const id = generateId('cpn');
@@ -519,6 +585,16 @@ app.post('/api/coupons', (req, res) => {
     `).run(id, code.toUpperCase().trim(), discount_type, Number(discount_value), Number(min_order_value), Number(max_uses), expiry_date || '2028-12-31', applicable_category_id || null);
 
     res.status(201).json({ success: true, message: 'Coupon created', id });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.delete('/api/coupons/:id', requireAdmin, (req, res) => {
+  try {
+    const { id } = req.params;
+    db.prepare('DELETE FROM coupons WHERE id = ?').run(id);
+    res.json({ success: true, message: 'Coupon deleted' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -832,7 +908,7 @@ app.post('/api/orders/:id/payment', upload.single('screenshot'), (req, res) => {
 // ==========================================
 // 8. ADMIN PAYMENT VERIFICATION QUEUE
 // ==========================================
-app.get('/api/admin/payments/queue', (req, res) => {
+app.get('/api/admin/payments/queue', requireAdmin, (req, res) => {
   try {
     const queue = db.prepare(`
       SELECT 
@@ -864,7 +940,7 @@ app.get('/api/admin/payments/queue', (req, res) => {
 });
 
 // Admin Verification Action (CONFIRM / REJECT / REQUEST_INFO)
-app.post('/api/admin/payments/:orderId/verify', (req, res) => {
+app.post('/api/admin/payments/:orderId/verify', requireAdmin, (req, res) => {
   try {
     const { orderId } = req.params;
     const { action, rejection_reason, admin_notes, verified_by = 'ValorVault Admin' } = req.body;
@@ -1087,7 +1163,7 @@ app.get('/api/orders/:id/delivery', (req, res) => {
 });
 
 // Admin Manual Delivery Dispatch
-app.post('/api/admin/orders/:id/deliver', (req, res) => {
+app.post('/api/admin/orders/:id/deliver', requireAdmin, (req, res) => {
   try {
     const { id } = req.params;
     const { delivery_data, delivery_notes, admin_name = 'Admin' } = req.body;
@@ -1180,7 +1256,7 @@ app.post('/api/orders/:id/refund-request', (req, res) => {
   }
 });
 
-app.post('/api/admin/orders/:id/refund-decision', (req, res) => {
+app.post('/api/admin/orders/:id/refund-decision', requireAdmin, (req, res) => {
   try {
     const { id } = req.params;
     const { decision, reason, admin_name = 'Admin' } = req.body; // 'APPROVE' or 'DECLINE'
@@ -1295,7 +1371,7 @@ app.get('/api/tickets', (req, res) => {
   }
 });
 
-app.post('/api/tickets/:id/reply', (req, res) => {
+app.post('/api/tickets/:id/reply', requireAdmin, (req, res) => {
   try {
     const { id } = req.params;
     const { reply, status = 'RESOLVED', admin_name = 'ValorVault Support' } = req.body;
@@ -1363,7 +1439,7 @@ app.post('/api/reviews', (req, res) => {
 // ==========================================
 // 13. ADMIN STATS & AUDIT LOGS
 // ==========================================
-app.get('/api/admin/stats', (req, res) => {
+app.get('/api/admin/stats', requireAdmin, (req, res) => {
   try {
     const totalOrders = db.prepare('SELECT COUNT(*) as count FROM orders').get().count;
     const pendingPayments = db.prepare("SELECT COUNT(*) as count FROM orders WHERE status IN ('PAYMENT_SUBMITTED', 'PAYMENT_UNDER_REVIEW')").get().count;
@@ -1410,7 +1486,7 @@ app.get('/api/admin/stats', (req, res) => {
   }
 });
 
-app.get('/api/admin/audit-logs', (req, res) => {
+app.get('/api/admin/audit-logs', requireAdmin, (req, res) => {
   try {
     const logs = db.prepare('SELECT * FROM audit_logs ORDER BY created_at DESC LIMIT 50').all();
     res.json({ success: true, logs });
