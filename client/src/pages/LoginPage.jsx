@@ -68,7 +68,7 @@ export default function LoginPage() {
               <label className="text-[#111426] font-bold">Password</label>
               <button
                 type="button"
-                onClick={() => addToast('Please use demo password: player123 or admin123', 'info')}
+                onClick={() => addToast('Please reach out via the Support Desk to reset your password.', 'info')}
                 className="text-[11px] text-[#5B45F5] hover:underline font-semibold"
               >
                 Forgot?

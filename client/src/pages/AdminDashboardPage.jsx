@@ -89,7 +89,7 @@ export default function AdminDashboardPage() {
 
   // Admin Security / Password Change State Form
   const [adminSecurityForm, setAdminSecurityForm] = useState({
-    email: currentUser?.email || 'admin@valorvault.gg',
+    email: currentUser?.email || 'bixxstoreshopify@gmail.com',
     current_password: '',
     new_password: '',
     confirm_password: ''
@@ -418,7 +418,7 @@ export default function AdminDashboardPage() {
                   required
                   value={adminEmail}
                   onChange={(e) => setAdminEmail(e.target.value)}
-                  placeholder="admin@valorvault.gg"
+                  placeholder="bixxstoreshopify@gmail.com"
                   className="w-full pl-10 pr-3.5 py-3 rounded-xl bg-[#18181B] border border-[#27272A] focus:border-[#7C4DFF] text-white outline-none transition placeholder-[#52525B]"
                 />
               </div>

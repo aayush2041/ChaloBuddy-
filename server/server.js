@@ -17,20 +17,24 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Admin & Security Configuration
-const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'admin@valorvault.gg').trim().toLowerCase();
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'bixxstoreshopify@gmail.com').trim().toLowerCase();
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'qaZwsX@12';
 const JWT_SECRET = process.env.JWT_SECRET || 'vv_jwt_secret_key_2026_super_secure';
 
 // Upsert admin user on startup
 try {
-  const existingAdmin = db.prepare('SELECT id FROM users WHERE role = ?').get('admin');
+  const existingAdmin = db.prepare("SELECT id FROM users WHERE role = 'admin' OR email = 'admin@valorvault.gg' OR email = ?").get(ADMIN_EMAIL);
   if (existingAdmin) {
-    db.prepare('UPDATE users SET email = ?, password = ? WHERE id = ?').run(ADMIN_EMAIL, ADMIN_PASSWORD, existingAdmin.id);
+    db.prepare('UPDATE users SET email = ?, password = ?, role = ? WHERE id = ?').run(ADMIN_EMAIL, ADMIN_PASSWORD, 'admin', existingAdmin.id);
   } else {
     db.prepare(`
       INSERT INTO users (id, name, email, phone, role, password, avatar)
       VALUES (?, ?, ?, ?, 'admin', ?, ?)
     `).run('usr_admin_01', 'ValorVault Admin', ADMIN_EMAIL, '+91 98765 43210', ADMIN_PASSWORD, 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=150');
+  }
+  // Remove legacy test admin account if present
+  if (ADMIN_EMAIL !== 'admin@valorvault.gg') {
+    db.prepare("DELETE FROM users WHERE email = 'admin@valorvault.gg'").run();
   }
 } catch (e) {
   console.warn('Could not sync admin credentials:', e.message);

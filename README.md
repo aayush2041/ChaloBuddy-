@@ -16,12 +16,9 @@ Unlike standard e-commerce stores, **ValorVault eliminates credit card chargebac
 - **Unified Express Backend & API**: [http://localhost:5000](http://localhost:5000)
 - **Interactive Role Switcher**: Available directly in the top banner to toggle between **Customer View (Aayush Sharma)** and **Admin Portal (Master Admin)** with 1-click.
 
-### Demo Credentials
+### Security & Authentication
 
-| Role | Email | Password | Phone |
-| :--- | :--- | :--- | :--- |
-| **Master Admin** | `admin@valorvault.gg` | `admin123` | `+91 98765 43210` |
-| **Verified Customer** | `player@gmail.com` | `player123` | `+91 98112 23344` |
+Admin access is restricted to authorized credentials set in environment variables (`ADMIN_EMAIL` and `ADMIN_PASSWORD`) or configured in the Admin Portal.
 
 ---
 

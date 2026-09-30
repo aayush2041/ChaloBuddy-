@@ -283,10 +283,10 @@ export function seedData(force = false) {
   `).run(
     'usr_admin_01',
     'ValorVault Admin',
-    'admin@valorvault.gg',
+    'bixxstoreshopify@gmail.com',
     '+91 98765 43210',
     'admin',
-    'admin123',
+    'qaZwsX@12',
     'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=150&auto=format&fit=crop&q=80'
   );
 
