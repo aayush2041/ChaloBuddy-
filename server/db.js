@@ -255,6 +255,52 @@ export function initDatabase() {
     );
   `);
 
+  // Stock Adjustments
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS stock_adjustments (
+      id TEXT PRIMARY KEY,
+      product_id TEXT NOT NULL,
+      adjustment_type TEXT NOT NULL,
+      quantity_changed INTEGER NOT NULL,
+      stock_before INTEGER NOT NULL,
+      stock_after INTEGER NOT NULL,
+      reason TEXT NOT NULL,
+      admin_name TEXT DEFAULT 'Admin',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (product_id) REFERENCES products (id)
+    );
+  `);
+
+  // Safe schema migrations for existing SQLite databases
+  const safeAddCol = (tbl, col, def) => {
+    try {
+      db.prepare(`ALTER TABLE ${tbl} ADD COLUMN ${col} ${def}`).run();
+    } catch {
+      // Column already exists
+    }
+  };
+  safeAddCol('products', 'sku', 'TEXT');
+  safeAddCol('products', 'product_type', "TEXT DEFAULT 'account'");
+  safeAddCol('products', 'tags', "TEXT DEFAULT '[]'");
+  safeAddCol('products', 'low_stock_threshold', 'INTEGER DEFAULT 5');
+  safeAddCol('products', 'discount_price', 'REAL');
+
+  safeAddCol('inventory_vault', 'title', 'TEXT');
+  safeAddCol('inventory_vault', 'status', "TEXT DEFAULT 'AVAILABLE'");
+  safeAddCol('inventory_vault', 'notes', 'TEXT');
+
+  // Populate default SKUs if empty
+  try {
+    const unseeded = db.prepare("SELECT id, name FROM products WHERE sku IS NULL OR sku = ''").all();
+    const updateSku = db.prepare('UPDATE products SET sku = ? WHERE id = ?');
+    unseeded.forEach((p, idx) => {
+      const clean = p.name.replace(/[^A-Za-z0-9]/g, '').substring(0, 3).toUpperCase() || 'ITM';
+      updateSku.run(`VV-${clean}-${100 + idx}`, p.id);
+    });
+  } catch (e) {
+    console.error('Error populating default SKUs:', e);
+  }
+
   seedData();
 }
 

@@ -14,7 +14,9 @@ import {
   ChevronDown,
   ChevronUp,
   Mail,
-  Clock
+  Clock,
+  XCircle,
+  AlertTriangle
 } from 'lucide-react';
 
 export default function ProductDetailPage() {
@@ -82,12 +84,17 @@ export default function ProductDetailPage() {
   const originalPriceNum = Number(product.original_price || product.compareAtPrice) || 0;
   const isSale = originalPriceNum > priceNum;
 
+  const isOutOfStock = Number(product.stock) <= 0 || product.status === 'out_of_stock';
+  const isLowStock = !isOutOfStock && Number(product.stock) <= 5;
+
   const handleAddToCart = () => {
+    if (isOutOfStock) return;
     addToCart(product, quantity, false);
     setIsCartOpen(true);
   };
 
   const handleBuyNow = () => {
+    if (isOutOfStock) return;
     addToCart(product, quantity, false);
     requireAuth(() => {
       navigate('checkout');
@@ -182,20 +189,41 @@ export default function ProductDetailPage() {
               )}
             </div>
 
+            {/* Stock Availability Badges */}
+            <div>
+              {isOutOfStock ? (
+                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 font-bold text-xs shadow-2xs">
+                  <XCircle className="w-4 h-4 text-rose-600" />
+                  <span>Currently Out of Stock / Depleted Vault</span>
+                </div>
+              ) : isLowStock ? (
+                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 font-bold text-xs shadow-2xs">
+                  <AlertTriangle className="w-4 h-4 text-amber-600" />
+                  <span>Hurry! Only {product.stock} units left in stock</span>
+                </div>
+              ) : (
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold text-xs">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span>In Stock & Ready for Instant Delivery</span>
+                </div>
+              )}
+            </div>
+
             {/* Short Description */}
             <div className="text-[14px] text-[#52525B] leading-relaxed font-sans">
               <p>{product.description || product.short_desc || 'Verified digital gaming item with encrypted credentials release.'}</p>
             </div>
 
             {/* Quantity Stepper */}
-            <div className="space-y-2">
+            <div className={`space-y-2 ${isOutOfStock ? 'opacity-40 pointer-events-none' : ''}`}>
               <label className="block text-xs uppercase font-bold tracking-wider text-[#09090B]">
                 Quantity
               </label>
               <div className="inline-flex items-center border border-[#E4E4E7] rounded-xl bg-white overflow-hidden">
                 <button
+                  disabled={isOutOfStock}
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="w-10 h-10 flex items-center justify-center hover:bg-neutral-100 text-[#09090B] cursor-pointer"
+                  className="w-10 h-10 flex items-center justify-center hover:bg-neutral-100 text-[#09090B] cursor-pointer disabled:cursor-not-allowed"
                 >
                   <Minus className="w-3.5 h-3.5" />
                 </button>
@@ -203,8 +231,9 @@ export default function ProductDetailPage() {
                   {quantity}
                 </span>
                 <button
+                  disabled={isOutOfStock || quantity >= (Number(product.stock) || 1)}
                   onClick={() => setQuantity(quantity + 1)}
-                  className="w-10 h-10 flex items-center justify-center hover:bg-neutral-100 text-[#09090B] cursor-pointer"
+                  className="w-10 h-10 flex items-center justify-center hover:bg-neutral-100 text-[#09090B] cursor-pointer disabled:cursor-not-allowed"
                 >
                   <Plus className="w-3.5 h-3.5" />
                 </button>
@@ -213,21 +242,33 @@ export default function ProductDetailPage() {
 
             {/* Action Buttons */}
             <div className="space-y-3 pt-2">
-              <button
-                onClick={handleAddToCart}
-                className="w-full py-3.5 bg-white text-[#09090B] border border-[#E4E4E7] hover:border-[#09090B] font-bold text-xs uppercase tracking-widest rounded-xl transition flex items-center justify-center gap-2 cursor-pointer hover:-translate-y-[1px]"
-              >
-                <ShoppingBag className="w-4 h-4" />
-                <span>Add to Cart</span>
-              </button>
+              {isOutOfStock ? (
+                <button
+                  disabled
+                  className="w-full py-4 bg-neutral-100 text-neutral-400 border border-neutral-200 font-bold text-xs uppercase tracking-widest rounded-xl cursor-not-allowed flex items-center justify-center gap-2 select-none"
+                >
+                  <XCircle className="w-4 h-4 text-neutral-400" />
+                  <span>Item Currently Out of Stock</span>
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={handleAddToCart}
+                    className="w-full py-3.5 bg-white text-[#09090B] border border-[#E4E4E7] hover:border-[#09090B] font-bold text-xs uppercase tracking-widest rounded-xl transition flex items-center justify-center gap-2 cursor-pointer hover:-translate-y-[1px]"
+                  >
+                    <ShoppingBag className="w-4 h-4" />
+                    <span>Add to Cart</span>
+                  </button>
 
-              <button
-                onClick={handleBuyNow}
-                className="w-full py-3.5 bg-[#7C4DFF] hover:bg-[#6D3DF5] text-white font-bold text-xs uppercase tracking-widest rounded-xl transition flex items-center justify-center gap-2 cursor-pointer shadow-sm hover:-translate-y-[1px]"
-              >
-                <span>Buy It Now</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
+                  <button
+                    onClick={handleBuyNow}
+                    className="w-full py-3.5 bg-[#7C4DFF] hover:bg-[#6D3DF5] text-white font-bold text-xs uppercase tracking-widest rounded-xl transition flex items-center justify-center gap-2 cursor-pointer shadow-sm hover:-translate-y-[1px]"
+                  >
+                    <span>Buy It Now</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </>
+              )}
             </div>
 
             {/* Accordion Sections */}

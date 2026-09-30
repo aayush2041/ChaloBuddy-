@@ -102,6 +102,50 @@ export const api = {
   deleteProduct: async (id) => {
     return authFetch(`/products/${id}`, { method: 'DELETE' });
   },
+  bulkProducts: async (action, product_ids, payload = {}) => {
+    return authFetch('/products/bulk', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, product_ids, payload })
+    });
+  },
+  duplicateProduct: async (id) => {
+    return authFetch(`/products/${id}/duplicate`, {
+      method: 'POST'
+    });
+  },
+  getInventorySummary: async () => {
+    return authFetch('/inventory/summary');
+  },
+  getProductInventory: async (id) => {
+    return authFetch(`/products/${id}/inventory`);
+  },
+  adjustProductStock: async (id, adjustmentData) => {
+    return authFetch(`/products/${id}/stock-adjustment`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(adjustmentData)
+    });
+  },
+  addVaultItem: async (id, itemData) => {
+    return authFetch(`/products/${id}/inventory`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(itemData)
+    });
+  },
+  updateVaultItem: async (id, itemId, itemData) => {
+    return authFetch(`/products/${id}/inventory/${itemId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(itemData)
+    });
+  },
+  deleteVaultItem: async (id, itemId) => {
+    return authFetch(`/products/${id}/inventory/${itemId}`, {
+      method: 'DELETE'
+    });
+  },
 
   // Coupons
   validateCoupon: async (code, order_amount, category_id) => {

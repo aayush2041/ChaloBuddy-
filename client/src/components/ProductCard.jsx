@@ -22,8 +22,11 @@ export default function ProductCard({
   const originalPriceNum = Number(product.original_price || product.compareAtPrice) || 0;
   const isSale = originalPriceNum > priceNum;
 
+  const isOutOfStock = Number(product.stock) <= 0 || product.status === 'out_of_stock';
+
   const handleQuickAdd = (e) => {
     e.stopPropagation();
+    if (isOutOfStock) return;
     addToCart(product, 1, false);
     setAdded(true);
     setIsCartOpen(true);
@@ -42,16 +45,20 @@ export default function ProductCard({
         <img
           src={coverImage}
           alt={product.name || product.title}
-          className="w-full h-full object-cover transition-transform duration-300 ease-out group-hover:scale-103"
+          className={`w-full h-full object-cover transition-transform duration-300 ease-out group-hover:scale-103 ${isOutOfStock ? 'opacity-70 grayscale-[30%]' : ''}`}
           loading="lazy"
           onError={(e) => {
             e.currentTarget.src = '/shopify_assets/hero.png';
           }}
         />
 
-        {/* Badges: SALE & VERIFIED */}
-        <div className="absolute top-2.5 left-2.5 z-10">
-          {isSale ? (
+        {/* Badges: SALE, OUT OF STOCK & VERIFIED */}
+        <div className="absolute top-2.5 left-2.5 z-10 flex items-center gap-1.5">
+          {isOutOfStock ? (
+            <span className="bg-rose-600 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md shadow-xs">
+              Sold Out
+            </span>
+          ) : isSale ? (
             <span className="bg-[#09090B] text-white text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md shadow-xs">
               SALE
             </span>
@@ -103,27 +110,38 @@ export default function ProductCard({
           </div>
 
           {/* Compact Add to Cart Button */}
-          <button
-            onClick={handleQuickAdd}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-150 ease-out flex items-center gap-1.5 cursor-pointer hover:-translate-y-[1px] ${
-              added
-                ? 'bg-emerald-600 text-white'
-                : 'bg-[#F1ECFF] hover:bg-[#7C4DFF] text-[#7C4DFF] hover:text-white'
-            }`}
-            title="Add to Cart"
-          >
-            {added ? (
-              <>
-                <Check className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Added</span>
-              </>
-            ) : (
-              <>
-                <ShoppingBag className="w-3.5 h-3.5" />
-                <span>Add</span>
-              </>
-            )}
-          </button>
+          {isOutOfStock ? (
+            <button
+              disabled
+              onClick={(e) => e.stopPropagation()}
+              className="px-3 py-1.5 rounded-lg text-xs font-bold bg-neutral-100 text-neutral-400 cursor-not-allowed border border-neutral-200"
+              title="Sold Out"
+            >
+              Sold Out
+            </button>
+          ) : (
+            <button
+              onClick={handleQuickAdd}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-150 ease-out flex items-center gap-1.5 cursor-pointer hover:-translate-y-[1px] ${
+                added
+                  ? 'bg-emerald-600 text-white'
+                  : 'bg-[#F1ECFF] hover:bg-[#7C4DFF] text-[#7C4DFF] hover:text-white'
+              }`}
+              title="Add to Cart"
+            >
+              {added ? (
+                <>
+                  <Check className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Added</span>
+                </>
+              ) : (
+                <>
+                  <ShoppingBag className="w-3.5 h-3.5" />
+                  <span>Add</span>
+                </>
+              )}
+            </button>
+          )}
         </div>
       </div>
     </div>

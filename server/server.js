@@ -296,9 +296,11 @@ app.get('/api/products', (req, res) => {
       search,
       sort,
       in_stock,
+      stock_status,
       is_deal,
       is_featured,
-      status
+      status,
+      include_all
     } = req.query;
 
     let query = `
@@ -329,14 +331,24 @@ app.get('/api/products', (req, res) => {
       params.push(Number(max_price));
     }
 
-    if (search) {
-      query += ` AND (p.name LIKE ? OR p.description LIKE ? OR p.short_desc LIKE ?)`;
-      const term = `%${search}%`;
-      params.push(term, term, term);
+    if (search && search.trim()) {
+      query += ` AND (p.name LIKE ? OR p.sku LIKE ? OR p.description LIKE ? OR p.short_desc LIKE ? OR c.name LIKE ?)`;
+      const term = `%${search.trim()}%`;
+      params.push(term, term, term, term, term);
     }
 
     if (in_stock === 'true') {
       query += ` AND p.stock > 0`;
+    }
+
+    if (stock_status) {
+      if (stock_status === 'in_stock') {
+        query += ` AND p.stock > 5`;
+      } else if (stock_status === 'low_stock') {
+        query += ` AND p.stock > 0 AND p.stock <= COALESCE(p.low_stock_threshold, 5)`;
+      } else if (stock_status === 'out_of_stock') {
+        query += ` AND (p.stock = 0 OR p.status = 'out_of_stock')`;
+      }
     }
 
     if (is_deal === 'true') {
@@ -347,12 +359,14 @@ app.get('/api/products', (req, res) => {
       query += ` AND p.is_featured = 1`;
     }
 
-    if (status) {
+    if (include_all === 'true' || status === 'all') {
+      // Admin requested all products regardless of status
+    } else if (status) {
       query += ` AND p.status = ?`;
       params.push(status);
     } else {
-      // By default show active for store browsing
-      query += ` AND p.status = 'active'`;
+      // Default storefront browsing displays active and out-of-stock items (not draft or disabled)
+      query += ` AND p.status IN ('active', 'out_of_stock')`;
     }
 
     // Sorting
@@ -362,6 +376,15 @@ app.get('/api/products', (req, res) => {
         break;
       case 'price_desc':
         query += ` ORDER BY p.price DESC`;
+        break;
+      case 'stock_asc':
+        query += ` ORDER BY p.stock ASC`;
+        break;
+      case 'stock_desc':
+        query += ` ORDER BY p.stock DESC`;
+        break;
+      case 'oldest':
+        query += ` ORDER BY p.created_at ASC`;
         break;
       case 'newest':
         query += ` ORDER BY p.created_at DESC`;
@@ -374,12 +397,28 @@ app.get('/api/products', (req, res) => {
 
     const rows = db.prepare(query).all(...params);
 
-    const formatted = rows.map(r => ({
-      ...r,
-      images: JSON.parse(r.images || '[]'),
-      specs: JSON.parse(r.specs || '{}'),
-      whats_included: JSON.parse(r.whats_included || '[]')
-    }));
+    const formatted = rows.map(r => {
+      let images = [];
+      try { images = typeof r.images === 'string' ? JSON.parse(r.images) : (r.images || []); } catch { images = []; }
+      let specs = {};
+      try { specs = typeof r.specs === 'string' ? JSON.parse(r.specs) : (r.specs || {}); } catch { specs = {}; }
+      let whats_included = [];
+      try { whats_included = typeof r.whats_included === 'string' ? JSON.parse(r.whats_included) : (r.whats_included || []); } catch { whats_included = []; }
+      let tags = [];
+      try { tags = typeof r.tags === 'string' ? JSON.parse(r.tags) : (Array.isArray(r.tags) ? r.tags : []); } catch { tags = []; }
+
+      return {
+        ...r,
+        images,
+        specs,
+        whats_included,
+        tags,
+        sku: r.sku || `VV-${(r.name || 'ITM').slice(0, 3).toUpperCase()}-${r.id.slice(-3).toUpperCase()}`,
+        product_type: r.product_type || 'account',
+        low_stock_threshold: Number(r.low_stock_threshold || 5),
+        discount_price: r.discount_price !== null && r.discount_price !== undefined ? Number(r.discount_price) : null
+      };
+    });
 
     res.json({ success: true, count: formatted.length, products: formatted });
   } catch (err) {
@@ -408,7 +447,7 @@ app.get('/api/products/:idOrSlug', (req, res) => {
 
     // Get related products from same category
     const related = db.prepare(`
-      SELECT id, name, slug, price, original_price, discount_percent, images, delivery_type, specs
+      SELECT id, name, slug, price, original_price, discount_percent, images, delivery_type, specs, stock, status
       FROM products
       WHERE category_id = ? AND id != ? AND status = 'active'
       LIMIT 4
@@ -418,13 +457,47 @@ app.get('/api/products/:idOrSlug', (req, res) => {
       specs: JSON.parse(p.specs || '{}')
     }));
 
+    // Inventory metrics for details view
+    const salesRow = db.prepare(`
+      SELECT COALESCE(SUM(quantity), 0) as total_sold
+      FROM order_items
+      WHERE product_id = ?
+    `).get(product.id);
+
+    const vaultCounts = db.prepare(`
+      SELECT
+        COUNT(CASE WHEN is_allocated = 0 AND (status = 'AVAILABLE' OR status IS NULL) THEN 1 END) as available_vault,
+        COUNT(CASE WHEN status = 'RESERVED' THEN 1 END) as reserved_vault,
+        COUNT(CASE WHEN is_allocated = 1 OR status = 'SOLD' THEN 1 END) as sold_vault
+      FROM inventory_vault
+      WHERE product_id = ?
+    `).get(product.id);
+
+    let images = [];
+    try { images = JSON.parse(product.images || '[]'); } catch { images = []; }
+    let specs = {};
+    try { specs = JSON.parse(product.specs || '{}'); } catch { specs = {}; }
+    let whats_included = [];
+    try { whats_included = JSON.parse(product.whats_included || '[]'); } catch { whats_included = []; }
+    let tags = [];
+    try { tags = JSON.parse(product.tags || '[]'); } catch { tags = []; }
+
     res.json({
       success: true,
       product: {
         ...product,
-        images: JSON.parse(product.images || '[]'),
-        specs: JSON.parse(product.specs || '{}'),
-        whats_included: JSON.parse(product.whats_included || '[]'),
+        images,
+        specs,
+        whats_included,
+        tags,
+        sku: product.sku || `VV-${product.id.slice(-4).toUpperCase()}`,
+        product_type: product.product_type || 'account',
+        low_stock_threshold: Number(product.low_stock_threshold || 5),
+        discount_price: product.discount_price !== null && product.discount_price !== undefined ? Number(product.discount_price) : null,
+        total_sold: salesRow?.total_sold || 0,
+        available_vault: vaultCounts?.available_vault || 0,
+        reserved_vault: vaultCounts?.reserved_vault || 0,
+        sold_vault: vaultCounts?.sold_vault || 0,
         reviews,
         related
       }
@@ -438,57 +511,114 @@ app.get('/api/products/:idOrSlug', (req, res) => {
 app.post('/api/products', requireAdmin, (req, res) => {
   try {
     const {
-      category_id, name, slug, description, short_desc, price, original_price,
-      discount_percent, stock, delivery_type, images, specs, whats_included,
-      terms, refund_policy, status = 'active', is_featured = 0, is_deal = 0,
-      initial_vault_item // Optional pre-loaded vault code or account
+      category_id,
+      name,
+      sku,
+      slug,
+      product_type = 'account',
+      description = '',
+      short_desc = '',
+      sub_label = '',
+      price,
+      original_price,
+      discount_price,
+      discount_percent,
+      stock = 1,
+      low_stock_threshold = 5,
+      delivery_type = 'account',
+      images = [],
+      specs = {},
+      whats_included = [],
+      terms,
+      refund_policy,
+      status = 'active',
+      is_featured = 0,
+      is_deal = 0,
+      tags = [],
+      initial_vault_item,
+      admin_name = 'Admin'
     } = req.body;
 
+    if (!name || !name.trim()) {
+      return res.status(400).json({ success: false, error: 'Product title is required' });
+    }
+    if (!category_id) {
+      return res.status(400).json({ success: false, error: 'Category is required' });
+    }
+    if (price === undefined || price === null || isNaN(Number(price)) || Number(price) < 0) {
+      return res.status(400).json({ success: false, error: 'Valid positive price is required' });
+    }
+    const numStock = Math.max(0, Number(stock || 0));
+
     const productId = generateId('prod');
-    const productSlug = slug || name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') + '-' + Date.now().toString().slice(-4);
+    const productSlug = slug && slug.trim()
+      ? slug.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '')
+      : name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') + '-' + Date.now().toString().slice(-4);
+
+    const cat = db.prepare('SELECT name FROM categories WHERE id = ?').get(category_id);
+    const catPrefix = (cat?.name || 'ITM').replace(/[^a-zA-Z]/g, '').slice(0, 3).toUpperCase() || 'ITM';
+    const productSku = sku && sku.trim() ? sku.trim().toUpperCase() : `VV-${catPrefix}-${Math.floor(100 + Math.random() * 900)}`;
+
+    const tagsArr = Array.isArray(tags) ? tags : (typeof tags === 'string' ? tags.split(',').map(t => t.trim()).filter(Boolean) : []);
 
     db.prepare(`
       INSERT INTO products (
-        id, category_id, name, slug, description, short_desc, price, original_price,
-        discount_percent, stock, delivery_type, images, specs, whats_included,
-        terms, refund_policy, status, is_featured, is_deal
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        id, category_id, name, sku, slug, product_type, description, short_desc, sub_label,
+        price, original_price, discount_price, discount_percent, stock, low_stock_threshold,
+        delivery_type, images, specs, whats_included, terms, refund_policy,
+        status, is_featured, is_deal, tags
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       productId,
       category_id,
-      name,
+      name.trim(),
+      productSku,
       productSlug,
-      description || '',
-      short_desc || '',
+      product_type,
+      description,
+      short_desc,
+      sub_label,
       Number(price),
       original_price ? Number(original_price) : Number(price),
+      discount_price ? Number(discount_price) : null,
       discount_percent ? Number(discount_percent) : 0,
-      Number(stock || 1),
-      delivery_type || 'account',
+      numStock,
+      Number(low_stock_threshold || 5),
+      delivery_type,
       typeof images === 'string' ? images : JSON.stringify(images || []),
       typeof specs === 'string' ? specs : JSON.stringify(specs || {}),
       typeof whats_included === 'string' ? whats_included : JSON.stringify(whats_included || []),
       terms || 'Standard ValorVault terms apply.',
       refund_policy || 'Full refund if login credentials fail initial verification.',
-      status,
+      status || 'active',
       is_featured ? 1 : 0,
-      is_deal ? 1 : 0
+      is_deal ? 1 : 0,
+      JSON.stringify(tagsArr)
     );
+
+    // Initial stock adjustment history entry
+    if (numStock > 0) {
+      db.prepare(`
+        INSERT INTO stock_adjustments (id, product_id, adjustment_type, quantity_changed, stock_before, stock_after, reason, admin_name)
+        VALUES (?, ?, 'SET', ?, 0, ?, 'Initial inventory stock on creation', ?)
+      `).run(generateId('stk_adj'), productId, numStock, numStock, admin_name);
+    }
 
     // Optional vault item creation
     if (initial_vault_item) {
       db.prepare(`
-        INSERT INTO inventory_vault (id, product_id, item_type, secret_data)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO inventory_vault (id, product_id, item_type, secret_data, title, status)
+        VALUES (?, ?, ?, ?, ?, 'AVAILABLE')
       `).run(
         generateId('vlt'),
         productId,
         delivery_type === 'code' ? 'redeem_code' : 'account_credentials',
-        typeof initial_vault_item === 'string' ? initial_vault_item : JSON.stringify(initial_vault_item)
+        typeof initial_vault_item === 'string' ? initial_vault_item : JSON.stringify(initial_vault_item),
+        `${name.slice(0, 18)} #001`
       );
     }
 
-    createAuditLog('PRODUCT', productId, 'CREATE', 'Admin', 'admin', `Product "${name}" created`);
+    createAuditLog('PRODUCT', productId, 'CREATE', admin_name, 'admin', `Product "${name}" created (SKU: ${productSku})`);
     res.status(201).json({ success: true, message: 'Product created successfully', id: productId });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -499,50 +629,108 @@ app.post('/api/products', requireAdmin, (req, res) => {
 app.put('/api/products/:id', requireAdmin, (req, res) => {
   try {
     const { id } = req.params;
+    const oldProduct = db.prepare('SELECT * FROM products WHERE id = ?').get(id);
+    if (!oldProduct) {
+      return res.status(404).json({ success: false, error: 'Product not found' });
+    }
+
     const {
-      name, price, original_price, discount_percent, stock,
-      delivery_type, description, short_desc, status, is_featured, is_deal,
-      specs, whats_included, terms, refund_policy
+      name, category_id, sku, product_type, price, original_price, discount_price,
+      discount_percent, stock, low_stock_threshold, delivery_type, description,
+      short_desc, sub_label, status, is_featured, is_deal, specs, whats_included,
+      images, terms, refund_policy, tags, admin_name = 'Admin'
     } = req.body;
+
+    if (name !== undefined && !name.trim()) {
+      return res.status(400).json({ success: false, error: 'Product title cannot be empty' });
+    }
+    if (price !== undefined && (isNaN(Number(price)) || Number(price) < 0)) {
+      return res.status(400).json({ success: false, error: 'Price must be a non-negative number' });
+    }
+    if (stock !== undefined && (isNaN(Number(stock)) || Number(stock) < 0)) {
+      return res.status(400).json({ success: false, error: 'Stock cannot be negative' });
+    }
+
+    // Handle stock adjustment log if stock changed directly in edit form
+    if (stock !== undefined && Number(stock) !== oldProduct.stock) {
+      const newStock = Math.max(0, Number(stock));
+      const diff = newStock - oldProduct.stock;
+      db.prepare(`
+        INSERT INTO stock_adjustments (id, product_id, adjustment_type, quantity_changed, stock_before, stock_after, reason, admin_name)
+        VALUES (?, ?, ?, ?, ?, ?, 'Stock updated via Product Edit form', ?)
+      `).run(
+        generateId('stk_adj'),
+        id,
+        diff > 0 ? 'INCREASE' : 'DECREASE',
+        diff,
+        oldProduct.stock,
+        newStock,
+        admin_name
+      );
+    }
+
+    const tagsVal = tags !== undefined
+      ? (Array.isArray(tags) ? JSON.stringify(tags) : (typeof tags === 'string' ? JSON.stringify(tags.split(',').map(t => t.trim()).filter(Boolean)) : '[]'))
+      : oldProduct.tags;
+
+    const imagesVal = images !== undefined
+      ? (typeof images === 'string' ? images : JSON.stringify(images))
+      : oldProduct.images;
 
     db.prepare(`
       UPDATE products SET
         name = COALESCE(?, name),
+        category_id = COALESCE(?, category_id),
+        sku = COALESCE(?, sku),
+        product_type = COALESCE(?, product_type),
         price = COALESCE(?, price),
         original_price = COALESCE(?, original_price),
+        discount_price = COALESCE(?, discount_price),
         discount_percent = COALESCE(?, discount_percent),
         stock = COALESCE(?, stock),
+        low_stock_threshold = COALESCE(?, low_stock_threshold),
         delivery_type = COALESCE(?, delivery_type),
         description = COALESCE(?, description),
         short_desc = COALESCE(?, short_desc),
+        sub_label = COALESCE(?, sub_label),
         status = COALESCE(?, status),
         is_featured = COALESCE(?, is_featured),
         is_deal = COALESCE(?, is_deal),
+        images = ?,
         specs = COALESCE(?, specs),
         whats_included = COALESCE(?, whats_included),
         terms = COALESCE(?, terms),
-        refund_policy = COALESCE(?, refund_policy)
+        refund_policy = COALESCE(?, refund_policy),
+        tags = ?
       WHERE id = ?
     `).run(
-      name,
+      name ? name.trim() : null,
+      category_id || null,
+      sku ? sku.trim().toUpperCase() : null,
+      product_type || null,
       price !== undefined ? Number(price) : null,
       original_price !== undefined ? Number(original_price) : null,
+      discount_price !== undefined ? Number(discount_price) : null,
       discount_percent !== undefined ? Number(discount_percent) : null,
-      stock !== undefined ? Number(stock) : null,
-      delivery_type,
-      description,
-      short_desc,
-      status,
+      stock !== undefined ? Math.max(0, Number(stock)) : null,
+      low_stock_threshold !== undefined ? Number(low_stock_threshold) : null,
+      delivery_type || null,
+      description !== undefined ? description : null,
+      short_desc !== undefined ? short_desc : null,
+      sub_label !== undefined ? sub_label : null,
+      status || null,
       is_featured !== undefined ? (is_featured ? 1 : 0) : null,
       is_deal !== undefined ? (is_deal ? 1 : 0) : null,
+      imagesVal,
       specs ? (typeof specs === 'string' ? specs : JSON.stringify(specs)) : null,
       whats_included ? (typeof whats_included === 'string' ? whats_included : JSON.stringify(whats_included)) : null,
-      terms,
-      refund_policy,
+      terms || null,
+      refund_policy || null,
+      tagsVal,
       id
     );
 
-    createAuditLog('PRODUCT', id, 'UPDATE', 'Admin', 'admin', `Product ${id} modified`);
+    createAuditLog('PRODUCT', id, 'UPDATE', admin_name, 'admin', `Product "${oldProduct.name}" modified`);
     res.json({ success: true, message: 'Product updated successfully' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -553,9 +741,401 @@ app.put('/api/products/:id', requireAdmin, (req, res) => {
 app.delete('/api/products/:id', requireAdmin, (req, res) => {
   try {
     const { id } = req.params;
+    const { admin_name = 'Admin' } = req.body || {};
+    const product = db.prepare('SELECT name FROM products WHERE id = ?').get(id);
+    if (!product) {
+      return res.status(404).json({ success: false, error: 'Product not found' });
+    }
+
+    db.prepare('DELETE FROM inventory_vault WHERE product_id = ?').run(id);
+    db.prepare('DELETE FROM stock_adjustments WHERE product_id = ?').run(id);
     db.prepare('DELETE FROM products WHERE id = ?').run(id);
-    createAuditLog('PRODUCT', id, 'DELETE', 'Admin', 'admin', `Product ${id} deleted`);
-    res.json({ success: true, message: 'Product deleted' });
+
+    createAuditLog('PRODUCT', id, 'DELETE', admin_name, 'admin', `Product "${product.name}" (${id}) deleted`);
+    res.json({ success: true, message: 'Product and associated inventory deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Bulk Product Actions
+app.post('/api/products/bulk', requireAdmin, (req, res) => {
+  try {
+    const { action, product_ids = [], payload = {}, admin_name = 'Admin' } = req.body;
+    if (!Array.isArray(product_ids) || product_ids.length === 0) {
+      return res.status(400).json({ success: false, error: 'No products selected' });
+    }
+
+    const placeholders = product_ids.map(() => '?').join(',');
+
+    if (action === 'delete') {
+      db.prepare(`DELETE FROM inventory_vault WHERE product_id IN (${placeholders})`).run(...product_ids);
+      db.prepare(`DELETE FROM stock_adjustments WHERE product_id IN (${placeholders})`).run(...product_ids);
+      const result = db.prepare(`DELETE FROM products WHERE id IN (${placeholders})`).run(...product_ids);
+      createAuditLog('PRODUCT', 'BULK', 'BULK_DELETE', admin_name, 'admin', `Bulk deleted ${result.changes} products`);
+      return res.json({ success: true, message: `Successfully deleted ${result.changes} products`, affected: result.changes });
+    }
+
+    if (action === 'enable') {
+      const result = db.prepare(`UPDATE products SET status = 'active' WHERE id IN (${placeholders})`).run(...product_ids);
+      createAuditLog('PRODUCT', 'BULK', 'BULK_ENABLE', admin_name, 'admin', `Bulk enabled ${result.changes} products`);
+      return res.json({ success: true, message: `Enabled ${result.changes} products`, affected: result.changes });
+    }
+
+    if (action === 'disable') {
+      const result = db.prepare(`UPDATE products SET status = 'disabled' WHERE id IN (${placeholders})`).run(...product_ids);
+      createAuditLog('PRODUCT', 'BULK', 'BULK_DISABLE', admin_name, 'admin', `Bulk disabled ${result.changes} products`);
+      return res.json({ success: true, message: `Disabled ${result.changes} products`, affected: result.changes });
+    }
+
+    if (action === 'draft') {
+      const result = db.prepare(`UPDATE products SET status = 'draft' WHERE id IN (${placeholders})`).run(...product_ids);
+      createAuditLog('PRODUCT', 'BULK', 'BULK_DRAFT', admin_name, 'admin', `Moved ${result.changes} products to draft`);
+      return res.json({ success: true, message: `Moved ${result.changes} products to draft`, affected: result.changes });
+    }
+
+    if (action === 'update_category' && payload.category_id) {
+      const result = db.prepare(`UPDATE products SET category_id = ? WHERE id IN (${placeholders})`).run(payload.category_id, ...product_ids);
+      createAuditLog('PRODUCT', 'BULK', 'BULK_CATEGORY', admin_name, 'admin', `Bulk updated category for ${result.changes} products`);
+      return res.json({ success: true, message: `Updated category for ${result.changes} products`, affected: result.changes });
+    }
+
+    if (action === 'update_stock' && payload.stock !== undefined) {
+      const newStock = Math.max(0, Number(payload.stock));
+      const result = db.prepare(`UPDATE products SET stock = ? WHERE id IN (${placeholders})`).run(newStock, ...product_ids);
+      product_ids.forEach(pid => {
+        db.prepare(`
+          INSERT INTO stock_adjustments (id, product_id, adjustment_type, quantity_changed, stock_before, stock_after, reason, admin_name)
+          VALUES (?, ?, 'SET', ?, 0, ?, 'Bulk stock update', ?)
+        `).run(generateId('stk_adj'), pid, newStock, newStock, admin_name);
+      });
+      createAuditLog('PRODUCT', 'BULK', 'BULK_STOCK', admin_name, 'admin', `Bulk set stock to ${newStock} for ${result.changes} products`);
+      return res.json({ success: true, message: `Stock set to ${newStock} for ${result.changes} products`, affected: result.changes });
+    }
+
+    res.status(400).json({ success: false, error: 'Invalid bulk action specified' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Duplicate Product
+app.post('/api/products/:id/duplicate', requireAdmin, (req, res) => {
+  try {
+    const { id } = req.params;
+    const { admin_name = 'Admin' } = req.body || {};
+    const orig = db.prepare('SELECT * FROM products WHERE id = ?').get(id);
+    if (!orig) {
+      return res.status(404).json({ success: false, error: 'Product not found' });
+    }
+
+    const newId = generateId('prod');
+    const newName = `${orig.name} (Copy)`;
+    const newSlug = `${orig.slug}-copy-${Date.now().toString().slice(-4)}`;
+    const newSku = `${orig.sku || 'VV-ITM'}-CPY-${Math.floor(10 + Math.random() * 90)}`;
+
+    db.prepare(`
+      INSERT INTO products (
+        id, category_id, name, sku, slug, product_type, description, short_desc, sub_label,
+        price, original_price, discount_price, discount_percent, stock, low_stock_threshold,
+        delivery_type, images, specs, features, whats_included, terms, refund_policy,
+        status, is_featured, is_deal, tags
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      newId, orig.category_id, newName, newSku, newSlug, orig.product_type || 'account',
+      orig.description, orig.short_desc, orig.sub_label,
+      orig.price, orig.original_price, orig.discount_price, orig.discount_percent,
+      0, orig.low_stock_threshold || 5,
+      orig.delivery_type, orig.images, orig.specs, orig.features, orig.whats_included,
+      orig.terms, orig.refund_policy,
+      'draft',
+      0, 0, orig.tags || '[]'
+    );
+
+    createAuditLog('PRODUCT', newId, 'DUPLICATE', admin_name, 'admin', `Duplicated "${orig.name}" into "${newName}"`);
+    res.status(201).json({ success: true, message: 'Product duplicated successfully as draft', id: newId });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Inventory Summary (Top Dashboard Stats)
+app.get('/api/inventory/summary', requireAdmin, (req, res) => {
+  try {
+    const prods = db.prepare('SELECT id, price, stock, low_stock_threshold, status FROM products').all();
+    const total_products = prods.length;
+    let total_inventory = 0;
+    let low_stock_count = 0;
+    let out_of_stock_count = 0;
+    let total_inventory_value = 0;
+
+    prods.forEach(p => {
+      const stock = Number(p.stock || 0);
+      const threshold = Number(p.low_stock_threshold || 5);
+      total_inventory += stock;
+      total_inventory_value += stock * Number(p.price || 0);
+
+      if (stock === 0 || p.status === 'out_of_stock') {
+        out_of_stock_count++;
+      } else if (stock <= threshold) {
+        low_stock_count++;
+      }
+    });
+
+    res.json({
+      success: true,
+      summary: {
+        total_products,
+        total_inventory,
+        low_stock_count,
+        out_of_stock_count,
+        total_inventory_value
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Single Product Inventory & Vault Details
+app.get('/api/products/:id/inventory', requireAdmin, (req, res) => {
+  try {
+    const { id } = req.params;
+    const product = db.prepare(`
+      SELECT p.*, c.name as category_name
+      FROM products p
+      JOIN categories c ON p.category_id = c.id
+      WHERE p.id = ?
+    `).get(id);
+
+    if (!product) {
+      return res.status(404).json({ success: false, error: 'Product not found' });
+    }
+
+    const vault_items = db.prepare(`
+      SELECT * FROM inventory_vault
+      WHERE product_id = ?
+      ORDER BY created_at DESC
+    `).all(id);
+
+    const adjustments = db.prepare(`
+      SELECT * FROM stock_adjustments
+      WHERE product_id = ?
+      ORDER BY created_at DESC
+      LIMIT 50
+    `).all(id);
+
+    const salesRow = db.prepare(`
+      SELECT COALESCE(SUM(quantity), 0) as total_sold
+      FROM order_items
+      WHERE product_id = ?
+    `).get(id);
+
+    const available_vault_count = vault_items.filter(v => !v.is_allocated && (v.status === 'AVAILABLE' || !v.status)).length;
+    const reserved_vault_count = vault_items.filter(v => v.status === 'RESERVED').length;
+    const sold_vault_count = vault_items.filter(v => v.is_allocated === 1 || v.status === 'SOLD').length;
+    const stock = Number(product.stock || 0);
+    const threshold = Number(product.low_stock_threshold || 5);
+
+    let inventory_status = 'In Stock';
+    if (stock === 0 || product.status === 'out_of_stock') {
+      inventory_status = 'Out of Stock';
+    } else if (stock <= threshold) {
+      inventory_status = 'Low Stock';
+    }
+
+    res.json({
+      success: true,
+      product: {
+        ...product,
+        images: JSON.parse(product.images || '[]'),
+        specs: JSON.parse(product.specs || '{}')
+      },
+      metrics: {
+        current_stock: stock,
+        available_count: available_vault_count,
+        reserved_count: reserved_vault_count,
+        sold_count: sold_vault_count,
+        total_sold_units: salesRow?.total_sold || 0,
+        inventory_value: stock * Number(product.price || 0),
+        inventory_status,
+        low_stock_threshold: threshold
+      },
+      vault_items,
+      adjustments
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Product Stock Adjustment
+app.post('/api/products/:id/stock-adjustment', requireAdmin, (req, res) => {
+  try {
+    const { id } = req.params;
+    const { adjustment_type, quantity, reason, admin_name = 'Admin' } = req.body;
+    const product = db.prepare('SELECT * FROM products WHERE id = ?').get(id);
+    if (!product) {
+      return res.status(404).json({ success: false, error: 'Product not found' });
+    }
+
+    const qty = Number(quantity);
+    if (isNaN(qty) || qty < 0) {
+      return res.status(400).json({ success: false, error: 'Valid adjustment quantity is required' });
+    }
+
+    let newStock = product.stock;
+    let qtyChanged = 0;
+
+    if (adjustment_type === 'INCREASE') {
+      newStock = product.stock + qty;
+      qtyChanged = qty;
+    } else if (adjustment_type === 'DECREASE') {
+      newStock = Math.max(0, product.stock - qty);
+      qtyChanged = -(product.stock - newStock);
+    } else if (adjustment_type === 'SET') {
+      newStock = Math.max(0, qty);
+      qtyChanged = newStock - product.stock;
+    } else {
+      return res.status(400).json({ success: false, error: 'Invalid adjustment type' });
+    }
+
+    db.prepare('UPDATE products SET stock = ? WHERE id = ?').run(newStock, id);
+
+    db.prepare(`
+      INSERT INTO stock_adjustments (id, product_id, adjustment_type, quantity_changed, stock_before, stock_after, reason, admin_name)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      generateId('stk_adj'),
+      id,
+      adjustment_type,
+      qtyChanged,
+      product.stock,
+      newStock,
+      reason || 'Manual inventory adjustment',
+      admin_name
+    );
+
+    createAuditLog('INVENTORY', id, 'STOCK_ADJUSTMENT', admin_name, 'admin', `Stock adjusted from ${product.stock} to ${newStock} (${qtyChanged >= 0 ? '+' : ''}${qtyChanged}). Reason: ${reason}`);
+
+    res.json({
+      success: true,
+      message: 'Stock updated successfully',
+      stock_before: product.stock,
+      stock_after: newStock
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Digital Vault Items CRUD
+app.post('/api/products/:id/inventory', requireAdmin, (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, item_type = 'account_credentials', secret_data, status = 'AVAILABLE', notes = '', auto_increment_stock = true, admin_name = 'Admin' } = req.body;
+
+    const product = db.prepare('SELECT * FROM products WHERE id = ?').get(id);
+    if (!product) {
+      return res.status(404).json({ success: false, error: 'Product not found' });
+    }
+
+    if (!secret_data) {
+      return res.status(400).json({ success: false, error: 'Credentials or secret payload is required' });
+    }
+
+    const vaultId = generateId('vlt');
+    const existingCount = db.prepare('SELECT COUNT(*) as count FROM inventory_vault WHERE product_id = ?').get(id).count;
+    const itemTitle = title && title.trim() ? title.trim() : `${product.name.slice(0, 18)} #${String(existingCount + 1).padStart(3, '0')}`;
+
+    db.prepare(`
+      INSERT INTO inventory_vault (id, product_id, item_type, secret_data, title, status, notes, is_allocated)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 0)
+    `).run(
+      vaultId,
+      id,
+      item_type,
+      typeof secret_data === 'string' ? secret_data : JSON.stringify(secret_data),
+      itemTitle,
+      status,
+      notes
+    );
+
+    if (auto_increment_stock && status === 'AVAILABLE') {
+      const newStock = product.stock + 1;
+      db.prepare('UPDATE products SET stock = ? WHERE id = ?').run(newStock, id);
+      db.prepare(`
+        INSERT INTO stock_adjustments (id, product_id, adjustment_type, quantity_changed, stock_before, stock_after, reason, admin_name)
+        VALUES (?, ?, 'INCREASE', 1, ?, ?, 'Added new digital item to vault', ?)
+      `).run(generateId('stk_adj'), id, product.stock, newStock, admin_name);
+    }
+
+    createAuditLog('INVENTORY', vaultId, 'VAULT_ITEM_ADD', admin_name, 'admin', `Added digital unit "${itemTitle}" to ${product.name}`);
+
+    res.status(201).json({
+      success: true,
+      message: 'Digital inventory item added to vault',
+      item: { id: vaultId, product_id: id, title: itemTitle, status, item_type }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.put('/api/products/:id/inventory/:itemId', requireAdmin, (req, res) => {
+  try {
+    const { id, itemId } = req.params;
+    const { title, secret_data, status, notes, admin_name = 'Admin' } = req.body;
+
+    const existing = db.prepare('SELECT * FROM inventory_vault WHERE id = ? AND product_id = ?').get(itemId, id);
+    if (!existing) {
+      return res.status(404).json({ success: false, error: 'Vault item not found' });
+    }
+
+    const isAllocated = status === 'SOLD' ? 1 : (status === 'AVAILABLE' ? 0 : existing.is_allocated);
+    const allocatedOrderId = status === 'AVAILABLE' ? null : existing.allocated_to_order_id;
+
+    db.prepare(`
+      UPDATE inventory_vault SET
+        title = COALESCE(?, title),
+        secret_data = COALESCE(?, secret_data),
+        status = COALESCE(?, status),
+        notes = COALESCE(?, notes),
+        is_allocated = ?,
+        allocated_to_order_id = ?
+      WHERE id = ? AND product_id = ?
+    `).run(
+      title ? title.trim() : null,
+      secret_data ? (typeof secret_data === 'string' ? secret_data : JSON.stringify(secret_data)) : null,
+      status || null,
+      notes !== undefined ? notes : null,
+      isAllocated,
+      allocatedOrderId,
+      itemId,
+      id
+    );
+
+    createAuditLog('INVENTORY', itemId, 'VAULT_ITEM_UPDATE', admin_name, 'admin', `Updated digital item ${itemId}`);
+    res.json({ success: true, message: 'Digital item updated successfully' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.delete('/api/products/:id/inventory/:itemId', requireAdmin, (req, res) => {
+  try {
+    const { id, itemId } = req.params;
+    const { admin_name = 'Admin' } = req.body || {};
+
+    const item = db.prepare('SELECT * FROM inventory_vault WHERE id = ? AND product_id = ?').get(itemId, id);
+    if (!item) {
+      return res.status(404).json({ success: false, error: 'Vault item not found' });
+    }
+
+    db.prepare('DELETE FROM inventory_vault WHERE id = ? AND product_id = ?').run(itemId, id);
+    createAuditLog('INVENTORY', itemId, 'VAULT_ITEM_DELETE', admin_name, 'admin', `Deleted digital vault item ${itemId}`);
+
+    res.json({ success: true, message: 'Digital item deleted from vault' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -1327,8 +1907,42 @@ app.post('/api/admin/orders/:id/refund-decision', requireAdmin, (req, res) => {
         WHERE id = ?
       `).run(reason || 'Refund approved by Admin', reason || 'Refund approved', order.id);
 
-      createAuditLog('REFUND', order.id, 'REFUND_APPROVED', admin_name, 'admin', `Refund approved. Reason: ${reason}`);
-      return res.json({ success: true, message: 'Refund approved. Order status set to REFUNDED.' });
+      // Restore inventory stock for refunded items
+      const orderItems = db.prepare('SELECT * FROM order_items WHERE order_id = ?').all(order.id);
+      for (const itm of orderItems) {
+        if (itm.product_id) {
+          const prod = db.prepare('SELECT stock FROM products WHERE id = ?').get(itm.product_id);
+          if (prod) {
+            const restoredStock = prod.stock + (itm.quantity || 1);
+            db.prepare('UPDATE products SET stock = ? WHERE id = ?').run(restoredStock, itm.product_id);
+            db.prepare(`
+              INSERT INTO stock_adjustments (id, product_id, adjustment_type, quantity_changed, stock_before, stock_after, reason, admin_name)
+              VALUES (?, ?, 'REFUND', ?, ?, ?, ?, ?)
+            `).run(
+              generateId('stk_adj'),
+              itm.product_id,
+              itm.quantity || 1,
+              prod.stock,
+              restoredStock,
+              `Stock restored from refunded order #${order.order_number}`,
+              admin_name
+            );
+          }
+        }
+      }
+
+      // Un-allocate vault items allocated to this order
+      db.prepare(`
+        UPDATE inventory_vault SET
+          is_allocated = 0,
+          status = 'AVAILABLE',
+          allocated_to_order_id = NULL,
+          notes = COALESCE(notes || ' | Returned from refunded order #' || ?, 'Returned from refunded order')
+        WHERE allocated_to_order_id = ?
+      `).run(order.order_number, order.id);
+
+      createAuditLog('REFUND', order.id, 'REFUND_APPROVED', admin_name, 'admin', `Refund approved. Restored inventory stock. Reason: ${reason}`);
+      return res.json({ success: true, message: 'Refund approved. Order status set to REFUNDED and stock restored.' });
     } else {
       db.prepare(`
         UPDATE orders SET
