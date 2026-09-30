@@ -49,7 +49,8 @@ import {
   Play,
   Image as ImageIcon,
   Film,
-  Star
+  Star,
+  SlidersHorizontal
 } from 'lucide-react';
 import { getYouTubeEmbedUrl, isDirectVideoUrl, parseProductImages } from '../utils/mediaUtils';
 
