@@ -125,14 +125,11 @@ export default function Navbar() {
             {/* Search Icon Button */}
             <button
               onClick={() => setSearchModalOpen(true)}
-              className="p-2 text-[#09090B] hover:text-[#7C4DFF] hover:bg-neutral-100 rounded-lg cursor-pointer transition-colors flex items-center gap-1.5"
-              title="Search (Ctrl + K)"
+              className="p-2 text-[#09090B] hover:text-[#7C4DFF] hover:bg-neutral-100 rounded-lg cursor-pointer transition-colors flex items-center justify-center"
+              title="Search"
               aria-label="Search"
             >
               <Search className="w-4 h-4" strokeWidth={2} />
-              <span className="hidden md:inline text-[11px] text-[#71717A] font-mono border border-[#E4E4E7] px-1.5 py-0.5 rounded">
-                ⌘K
-              </span>
             </button>
 
             {/* Account / User Menu */}

@@ -85,9 +85,11 @@ export default function SearchModal({ isOpen, onClose }) {
           <button
             type="button"
             onClick={onClose}
-            className="text-[11px] uppercase tracking-wider font-mono font-bold text-neutral-500 bg-neutral-50 border border-neutral-200 px-2 py-0.5 rounded hover:border-neutral-400 hover:text-black transition cursor-pointer"
+            className="p-1 rounded-lg text-neutral-400 hover:text-black hover:bg-neutral-100 transition-colors cursor-pointer ml-1"
+            title="Close"
+            aria-label="Close"
           >
-            ESC
+            <X className="w-5 h-5" />
           </button>
         </form>
 

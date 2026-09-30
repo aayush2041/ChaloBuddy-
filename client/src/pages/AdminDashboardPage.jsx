@@ -87,6 +87,17 @@ export default function AdminDashboardPage() {
   const [settingsForm, setSettingsForm] = useState({ ...settings });
   const [savingSettings, setSavingSettings] = useState(false);
 
+  useEffect(() => {
+    if (settings && Object.keys(settings).length > 0) {
+      setSettingsForm(prev => ({
+        ...prev,
+        ...settings,
+        support_email: settings.support_email || 'iushyt12@gmail.com',
+        support_hours: settings.support_hours || '09:00 AM – 11:30 PM IST (7 Days/Week)'
+      }));
+    }
+  }, [settings]);
+
   // Admin Security / Password Change State Form
   const [adminSecurityForm, setAdminSecurityForm] = useState({
     email: currentUser?.email || '',
@@ -520,7 +531,7 @@ export default function AdminDashboardPage() {
             { id: 'products', label: 'Products & Vault', icon: Package },
             { id: 'coupons', label: 'Coupons', icon: Tag },
             { id: 'tickets', label: 'Support Desk', icon: Headphones },
-            { id: 'settings', label: 'Payment Settings', icon: Settings },
+            { id: 'settings', label: 'Store & Contact Settings', icon: Settings },
             { id: 'audit', label: 'Audit Trail', icon: FileText }
           ].map((tab) => {
             const Icon = tab.icon;
@@ -1037,12 +1048,69 @@ export default function AdminDashboardPage() {
                 </div>
               </div>
 
+              {/* Customer Support & Contact Info */}
+              <div className="p-6 rounded-3xl bg-white border border-[#E7E9F2] shadow-xs space-y-4">
+                <div className="border-b border-[#E7E9F2] pb-2">
+                  <h4 className="font-extrabold text-[#111426] text-sm">Customer Support & Public Contact Info</h4>
+                  <p className="text-[11px] text-[#667085]">
+                    Configure the official contact details shown across the website, contact page, and delivery notifications.
+                  </p>
+                </div>
+                
+                <div>
+                  <label className="block text-[#667085] font-bold mb-1">Official Support Email *</label>
+                  <input
+                    type="email"
+                    value={settingsForm.support_email || ''}
+                    onChange={(e) => setSettingsForm({ ...settingsForm, support_email: e.target.value })}
+                    placeholder="iushyt12@gmail.com"
+                    className="w-full bg-[#F8F9FC] border border-[#E7E9F2] text-[#111426] rounded-xl p-3 text-xs focus:border-[#5B45F5] outline-none"
+                    required
+                  />
+                  <p className="text-[11px] text-[#667085] mt-1">Customers will see this email on the Contact desk, footer, and support ticket confirmations.</p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[#667085] font-bold mb-1">Support Operating Hours</label>
+                    <input
+                      type="text"
+                      value={settingsForm.support_hours || ''}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, support_hours: e.target.value })}
+                      placeholder="09:00 AM – 11:30 PM IST (7 Days/Week)"
+                      className="w-full bg-[#F8F9FC] border border-[#E7E9F2] text-[#111426] rounded-xl p-3 text-xs focus:border-[#5B45F5] outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[#667085] font-bold mb-1">Helpline Phone (Optional)</label>
+                    <input
+                      type="text"
+                      value={settingsForm.support_phone || ''}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, support_phone: e.target.value })}
+                      placeholder="Leave blank to hide phone"
+                      className="w-full bg-[#F8F9FC] border border-[#E7E9F2] text-[#111426] rounded-xl p-3 text-xs focus:border-[#5B45F5] outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[#667085] font-bold mb-1">Payment Verification Notice</label>
+                  <input
+                    type="text"
+                    value={settingsForm.verification_notice || ''}
+                    onChange={(e) => setSettingsForm({ ...settingsForm, verification_notice: e.target.value })}
+                    placeholder="Payments verified within 5-15 mins during 09:00 AM - 11:30 PM IST."
+                    className="w-full bg-[#F8F9FC] border border-[#E7E9F2] text-[#111426] rounded-xl p-3 text-xs focus:border-[#5B45F5] outline-none"
+                  />
+                </div>
+              </div>
+
               <button
                 type="submit"
                 disabled={savingSettings}
                 className="px-6 py-3 rounded-xl bg-[#5B45F5] hover:bg-[#4B38D3] text-white font-extrabold text-xs transition shadow-md cursor-pointer disabled:opacity-50"
               >
-                {savingSettings ? 'Saving Settings...' : 'Save Payment Configurations'}
+                {savingSettings ? 'Saving Settings...' : 'Save All Store & Contact Settings'}
               </button>
             </form>
 

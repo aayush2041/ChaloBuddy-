@@ -314,9 +314,9 @@ export function seedData(force = false) {
   insertSetting.run('bank_account_holder', 'ValorVault', 'Account Holder');
   insertSetting.run('bank_account_number', '3982019482910', 'Account Number');
   insertSetting.run('bank_ifsc', 'SBIN0004821', 'IFSC Code');
-  insertSetting.run('bank_branch', 'Connaught Place Main Branch, New Delhi', 'Branch');
-  insertSetting.run('support_phone', '+91 98765 43210', 'WhatsApp Support');
-  insertSetting.run('support_email', 'support@valorvault.gg', 'Support Email');
+  insertSetting.run('support_phone', '', 'Helpline Phone');
+  insertSetting.run('support_email', 'iushyt12@gmail.com', 'Support Email');
+  insertSetting.run('support_hours', '09:00 AM – 11:30 PM IST (7 Days/Week)', 'Operating Hours');
   insertSetting.run('platform_fee', '0', 'Processing Fee');
 
   // 3. Categories (Exact 5 cards from screen 01 & screen 02)

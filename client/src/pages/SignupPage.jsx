@@ -82,7 +82,7 @@ export default function SignupPage() {
           </div>
 
           <div>
-            <label className="block text-[#111426] mb-1 font-bold">Mobile / WhatsApp Number</label>
+            <label className="block text-[#111426] mb-1 font-bold">Mobile Phone Number</label>
             <div className="relative">
               <Phone className="w-4 h-4 text-[#667085] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input

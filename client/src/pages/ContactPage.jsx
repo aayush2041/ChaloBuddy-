@@ -4,7 +4,7 @@ import { Mail, Phone, MessageSquare, Headphones, CheckCircle2, ShieldCheck, Arro
 import { api } from '../api';
 
 export default function ContactPage() {
-  const { currentUser, showToast } = useStore();
+  const { currentUser, showToast, settings } = useStore();
   const [formData, setFormData] = useState({
     name: currentUser?.name || '',
     email: currentUser?.email || '',
@@ -44,7 +44,7 @@ export default function ContactPage() {
         {/* Header */}
         <div className="border-b border-[#E4E4E7] pb-6 mb-10 max-w-4xl">
           <span className="text-xs uppercase tracking-widest text-[#7C4DFF] font-bold">
-            Customer Support & Escrow Assistance
+            Customer Support & Assistance
           </span>
           <h1 className="font-heading font-extrabold text-3xl sm:text-5xl uppercase tracking-tight text-[#09090B] mt-2">
             Contact Us
@@ -65,7 +65,7 @@ export default function ContactPage() {
                 </div>
                 <h3 className="font-heading font-bold text-xl uppercase text-[#09090B]">Message Received</h3>
                 <p className="text-sm text-[#52525B]">
-                  Thank you for reaching out. A ValorVault escrow agent will respond to <strong>{formData.email}</strong> within 15 minutes.
+                  Thank you for reaching out. A ValorVault support agent will respond to <strong>{formData.email}</strong> within 15 minutes.
                 </p>
                 <button
                   onClick={() => {
@@ -160,25 +160,38 @@ export default function ContactPage() {
                   <Mail className="w-4 h-4 text-[#7C4DFF] shrink-0 mt-0.5" />
                   <div>
                     <span className="font-bold text-[#09090B] block">Email Support</span>
-                    <a href="mailto:support@valorvault.gg" className="text-[#52525B] hover:text-[#7C4DFF] transition-colors">
-                      support@valorvault.gg
+                    <a
+                      href={`mailto:${settings?.support_email || 'iushyt12@gmail.com'}`}
+                      className="text-[#52525B] hover:text-[#7C4DFF] font-medium transition-colors"
+                    >
+                      {settings?.support_email || 'iushyt12@gmail.com'}
                     </a>
                   </div>
                 </div>
 
-                <div className="flex items-start gap-3">
-                  <Phone className="w-4 h-4 text-[#7C4DFF] shrink-0 mt-0.5" />
-                  <div>
-                    <span className="font-bold text-[#09090B] block">WhatsApp Escrow Desk</span>
-                    <span className="text-[#52525B]">+91 98765 43210</span>
+                {settings?.support_phone && (
+                  <div className="flex items-start gap-3">
+                    <Phone className="w-4 h-4 text-[#7C4DFF] shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-bold text-[#09090B] block">Helpline</span>
+                      <span className="text-[#52525B] font-medium">{settings.support_phone}</span>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <div className="flex items-start gap-3">
                   <Headphones className="w-4 h-4 text-[#7C4DFF] shrink-0 mt-0.5" />
                   <div>
                     <span className="font-bold text-[#09090B] block">Live Hours</span>
-                    <span className="text-[#52525B]">09:00 AM – 11:30 PM IST (7 Days/Week)</span>
+                    <span className="text-[#52525B]">{settings?.support_hours || '09:00 AM – 11:30 PM IST (7 Days/Week)'}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <MessageSquare className="w-4 h-4 text-[#7C4DFF] shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-bold text-[#09090B] block">Direct Turnaround</span>
+                    <span className="text-[#52525B]">Tickets reviewed within 15 minutes</span>
                   </div>
                 </div>
               </div>
@@ -187,7 +200,7 @@ export default function ContactPage() {
             <div className="p-5 border border-emerald-200/80 bg-emerald-50/50 rounded-2xl space-y-2">
               <div className="flex items-center gap-2 text-emerald-800 font-bold text-xs uppercase">
                 <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                <span>Escrow Guarantee</span>
+                <span>Buyer Protection Guarantee</span>
               </div>
               <p className="text-xs text-emerald-900/80 leading-relaxed font-sans">
                 Every transaction on ValorVault is backed by our customer protection fund. If credentials fail verification within warranty, you are eligible for immediate replacement or full refund.

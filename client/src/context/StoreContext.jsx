@@ -63,9 +63,9 @@ export function StoreProvider({ children }) {
     bank_account_holder: 'ValorVault Digital Enterprises',
     bank_account_number: '3982019482910',
     bank_ifsc: 'SBIN0004821',
-    bank_branch: 'Connaught Place Main Branch, New Delhi',
-    support_phone: '+91 98765 43210',
-    support_email: 'support@valorvault.in',
+    support_phone: '',
+    support_email: 'iushyt12@gmail.com',
+    support_hours: '09:00 AM – 11:30 PM IST (7 Days/Week)',
     verification_notice: 'Payments verified within 5-15 mins during 09:00 AM - 11:30 PM IST.',
     platform_fee: '0'
   });

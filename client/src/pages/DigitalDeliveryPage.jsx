@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 
 export default function DigitalDeliveryPage() {
-  const { currentRoute, navigate, currentUser, requireAuth, showToast } = useStore();
+  const { currentRoute, navigate, currentUser, requireAuth, showToast, settings } = useStore();
   const orderRef = currentRoute.params?.id || 'VV-10248';
 
   const [order, setOrder] = useState(null);
@@ -78,7 +78,7 @@ ${data.instructions || 'Login to official client and update password and recover
 
 ========================================
 ValorVault 48h Inspection Guarantee Active.
-Official Desk: support@valorvault.in
+Official Desk: ${settings?.support_email || 'iushyt12@gmail.com'}
 `;
 
     const blob = new Blob([content], { type: 'text/plain' });

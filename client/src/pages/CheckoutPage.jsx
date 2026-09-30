@@ -173,10 +173,10 @@ export default function CheckoutPage() {
                 </p>
               </div>
 
-              {/* Phone / WhatsApp */}
+              {/* Phone */}
               <div>
                 <label className="text-xs uppercase font-bold tracking-wider text-[#09090B] mb-1.5 block">
-                  Mobile / WhatsApp Number <span className="text-red-500">*</span>
+                  Mobile Phone Number <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <Phone className="w-4 h-4 text-[#71717A] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -185,7 +185,7 @@ export default function CheckoutPage() {
                     required
                     value={customerPhone}
                     onChange={(e) => setCustomerPhone(e.target.value)}
-                    placeholder="+91 98765 43210"
+                    placeholder="+91 98000 00000"
                     className="w-full bg-white border border-[#E4E4E7] focus:border-[#7C4DFF] rounded-xl text-xs font-semibold text-[#09090B] pl-10 pr-4 py-3 outline-none"
                   />
                 </div>

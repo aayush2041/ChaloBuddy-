@@ -434,7 +434,7 @@ export default function CustomerDashboardPage() {
                 />
               </div>
               <div>
-                <span className="text-slate-400 block mb-1">Phone Number (WhatsApp delivery updates)</span>
+                <span className="text-slate-400 block mb-1">Mobile Phone Number</span>
                 <input
                   type="tel"
                   value={currentUser?.phone}

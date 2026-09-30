@@ -78,17 +78,7 @@ export default function CustomerSupportPage() {
             </div>
             <div>
               <span className="text-xs text-[#667085] block font-medium">Operating Hours</span>
-              <span className="text-xs font-extrabold text-[#111426]">09:00 AM – 11:30 PM IST</span>
-            </div>
-          </div>
-
-          <div className="p-5 rounded-3xl bg-white border border-[#E7E9F2] shadow-xs flex items-center space-x-3.5">
-            <div className="w-10 h-10 rounded-xl bg-cyan-50 text-cyan-600 flex items-center justify-center">
-              <Phone className="w-5 h-5" />
-            </div>
-            <div>
-              <span className="text-xs text-[#667085] block font-medium">WhatsApp Desk</span>
-              <span className="text-xs font-extrabold text-[#111426]">{settings.support_phone || '+91 98765 43210'}</span>
+              <span className="text-xs font-extrabold text-[#111426]">{settings.support_hours || '09:00 AM – 11:30 PM IST'}</span>
             </div>
           </div>
 
@@ -97,8 +87,20 @@ export default function CustomerSupportPage() {
               <Mail className="w-5 h-5" />
             </div>
             <div>
-              <span className="text-xs text-[#667085] block font-medium">Support Email</span>
-              <span className="text-xs font-extrabold text-[#111426]">{settings.support_email || 'support@valorvault.gg'}</span>
+              <span className="text-xs text-[#667085] block font-medium">Official Support Email</span>
+              <a href={`mailto:${settings.support_email || 'iushyt12@gmail.com'}`} className="text-xs font-extrabold text-[#111426] hover:text-[#5B45F5] transition-colors">
+                {settings.support_email || 'iushyt12@gmail.com'}
+              </a>
+            </div>
+          </div>
+
+          <div className="p-5 rounded-3xl bg-white border border-[#E7E9F2] shadow-xs flex items-center space-x-3.5">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+              <MessageSquare className="w-5 h-5" />
+            </div>
+            <div>
+              <span className="text-xs text-[#667085] block font-medium">Ticket Resolution</span>
+              <span className="text-xs font-extrabold text-[#111426]">Average replies &lt; 15 mins</span>
             </div>
           </div>
         </div>

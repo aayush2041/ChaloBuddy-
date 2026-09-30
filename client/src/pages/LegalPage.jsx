@@ -35,7 +35,7 @@ export default function LegalPage() {
       sections: [
         {
           heading: '1. Information We Collect',
-          body: 'We collect minimal customer information necessary to authenticate purchases and deliver digital goods: account name, email address, phone number (used for WhatsApp delivery notifications), and transaction references (UTR number and payment screenshots).'
+          body: 'We collect minimal customer information necessary to authenticate purchases and deliver digital goods: account name, email address, phone number (used for order and delivery notifications), and transaction references (UTR number and payment screenshots).'
         },
         {
           heading: '2. Storage & Vault Encryption',
@@ -43,7 +43,7 @@ export default function LegalPage() {
         },
         {
           heading: '3. Data Retention & Deletion',
-          body: 'Transactional audit records are retained for compliance with financial accounting standards. Users may request account deletion and removal of auxiliary telemetry by contacting support@valorvault.gg.'
+          body: 'Transactional audit records are retained for compliance with financial accounting standards. Users may request account deletion and removal of auxiliary telemetry by contacting iushyt12@gmail.com.'
         }
       ]
     },
