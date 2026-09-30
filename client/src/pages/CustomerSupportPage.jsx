@@ -17,7 +17,7 @@ export default function CustomerSupportPage() {
 
   const loadTickets = async () => {
     try {
-      const email = currentUser?.email || 'player@gmail.com';
+      const email = currentUser?.email || '';
       const res = await api.getTickets({ email });
       if (res.success) setTickets(res.tickets);
     } catch (err) {
@@ -33,7 +33,7 @@ export default function CustomerSupportPage() {
     try {
       const res = await api.createTicket({
         customer_name: currentUser?.name || 'Customer',
-        customer_email: currentUser?.email || 'player@gmail.com',
+        customer_email: currentUser?.email || '',
         customer_phone: currentUser?.phone || '',
         order_number: orderNumber.trim() || undefined,
         subject: subject.trim(),

@@ -27,7 +27,7 @@ export default function SupportTicketModal() {
       const res = await api.createTicket({
         user_id: currentUser?.id,
         customer_name: currentUser?.name || 'Customer',
-        customer_email: currentUser?.email || 'player@gmail.com',
+        customer_email: currentUser?.email || '',
         order_id: orderId.trim() || null,
         issue_type: issueType,
         subject: subject.trim(),

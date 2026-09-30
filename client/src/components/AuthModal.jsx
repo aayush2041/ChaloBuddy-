@@ -13,8 +13,8 @@ export default function AuthModal() {
     addToast
   } = useStore();
 
-  const [email, setEmail] = useState('player@gmail.com');
-  const [password, setPassword] = useState('player123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -119,7 +119,7 @@ export default function AuthModal() {
                     required
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="Aayush Sharma"
+                    placeholder="Your Full Name"
                     className="w-full bg-[#F8F9FC] border border-[#E7E9F2] focus:border-[#5B45F5] focus:bg-white text-xs font-bold text-[#111426] rounded-xl pl-10 pr-3 py-2.5 outline-none transition"
                   />
                 </div>
@@ -133,7 +133,7 @@ export default function AuthModal() {
                     required
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    placeholder="+91 98112 23344"
+                    placeholder="+91 98000 00000"
                     className="w-full bg-[#F8F9FC] border border-[#E7E9F2] focus:border-[#5B45F5] focus:bg-white text-xs font-bold text-[#111426] rounded-xl pl-10 pr-3 py-2.5 outline-none transition"
                   />
                 </div>
@@ -150,7 +150,7 @@ export default function AuthModal() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="player@gmail.com"
+                placeholder="name@domain.com"
                 className="w-full bg-[#F8F9FC] border border-[#E7E9F2] focus:border-[#5B45F5] focus:bg-white text-xs font-bold text-[#111426] rounded-xl pl-10 pr-3 py-2.5 outline-none transition"
               />
             </div>

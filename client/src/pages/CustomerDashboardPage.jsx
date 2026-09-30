@@ -39,8 +39,8 @@ export default function CustomerDashboardPage() {
       try {
         setLoading(true);
         const [ordersRes, ticketsRes] = await Promise.all([
-          api.getOrders({ email: currentUser?.email || 'player@gmail.com' }),
-          api.getTickets({ email: currentUser?.email || 'player@gmail.com' })
+          api.getOrders({ email: currentUser?.email || '' }),
+          api.getTickets({ email: currentUser?.email || '' })
         ]);
         if (ordersRes.success) setOrders(ordersRes.orders);
         if (ticketsRes.success) setTickets(ticketsRes.tickets);

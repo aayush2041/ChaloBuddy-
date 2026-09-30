@@ -45,7 +45,7 @@ export default function AccountDashboardPage() {
     async function loadAccountData() {
       try {
         setLoading(true);
-        const email = currentUser?.email || 'player@gmail.com';
+        const email = currentUser?.email || '';
         const [ordersRes, ticketsRes] = await Promise.all([
           api.getOrders({ email }),
           api.getTickets({ email })

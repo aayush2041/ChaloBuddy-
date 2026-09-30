@@ -32,7 +32,7 @@ export default function OrderTrackingPage() {
             if (fb.success && fb.order) setOrder(fb.order);
           }
         } else {
-          const email = currentUser?.email || 'player@gmail.com';
+          const email = currentUser?.email || '';
           const listRes = await api.getOrders({ email });
           if (listRes.success && listRes.orders.length > 0) {
             const first = await api.getOrderByIdOrNumber(listRes.orders[0].id);
