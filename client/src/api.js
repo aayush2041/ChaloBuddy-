@@ -42,6 +42,13 @@ export const api = {
       body: JSON.stringify({ settings, updatedBy })
     });
   },
+  updateAdminSecurity: async (email, current_password, new_password) => {
+    return authFetch('/admin/security', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, current_password, new_password })
+    });
+  },
 
   // Auth
   login: async (email, password) => {

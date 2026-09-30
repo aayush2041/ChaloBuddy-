@@ -216,6 +216,53 @@ app.post('/api/auth/register', (req, res) => {
   }
 });
 
+// Update Admin Credentials
+app.put('/api/admin/security', requireAdmin, (req, res) => {
+  try {
+    const { email, current_password, new_password } = req.body;
+    const adminId = req.adminUser.id;
+
+    const currentAdmin = db.prepare('SELECT * FROM users WHERE id = ?').get(adminId);
+    if (!currentAdmin) {
+      return res.status(404).json({ success: false, error: 'Admin account not found' });
+    }
+
+    if (current_password && currentAdmin.password !== current_password) {
+      return res.status(400).json({ success: false, error: 'Current password is incorrect' });
+    }
+
+    const updatedEmail = email ? email.trim().toLowerCase() : currentAdmin.email;
+    const updatedPassword = new_password && new_password.trim() ? new_password.trim() : currentAdmin.password;
+
+    db.prepare(`
+      UPDATE users SET
+        email = ?,
+        password = ?,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).run(updatedEmail, updatedPassword, adminId);
+
+    createAuditLog('USER', adminId, 'SECURITY_UPDATE', currentAdmin.name, 'admin', 'Admin credentials updated');
+
+    const updatedUser = {
+      id: currentAdmin.id,
+      name: currentAdmin.name,
+      email: updatedEmail,
+      role: 'admin',
+      avatar: currentAdmin.avatar
+    };
+    const token = generateToken(updatedUser);
+
+    res.json({
+      success: true,
+      message: 'Admin email and password updated successfully',
+      user: { ...updatedUser, token }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // ==========================================
 // 3. CATEGORIES & PRODUCTS ENDPOINTS
 // ==========================================

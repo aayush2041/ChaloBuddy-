@@ -87,6 +87,49 @@ export default function AdminDashboardPage() {
   const [settingsForm, setSettingsForm] = useState({ ...settings });
   const [savingSettings, setSavingSettings] = useState(false);
 
+  // Admin Security / Password Change State Form
+  const [adminSecurityForm, setAdminSecurityForm] = useState({
+    email: currentUser?.email || 'admin@valorvault.gg',
+    current_password: '',
+    new_password: '',
+    confirm_password: ''
+  });
+  const [updatingCredentials, setUpdatingCredentials] = useState(false);
+
+  const handleUpdateAdminSecurity = async (e) => {
+    e.preventDefault();
+    if (adminSecurityForm.new_password && adminSecurityForm.new_password !== adminSecurityForm.confirm_password) {
+      addToast('New passwords do not match', 'error');
+      return;
+    }
+    try {
+      setUpdatingCredentials(true);
+      const res = await api.updateAdminSecurity(
+        adminSecurityForm.email,
+        adminSecurityForm.current_password,
+        adminSecurityForm.new_password
+      );
+      if (res.success) {
+        addToast('Admin credentials updated successfully!', 'success');
+        if (res.user) {
+          loginUser(res.user);
+        }
+        setAdminSecurityForm({
+          email: res.user?.email || adminSecurityForm.email,
+          current_password: '',
+          new_password: '',
+          confirm_password: ''
+        });
+      } else {
+        addToast(res.error || 'Failed to update credentials', 'error');
+      }
+    } catch {
+      addToast('Error updating admin credentials', 'error');
+    } finally {
+      setUpdatingCredentials(false);
+    }
+  };
+
   // New Coupon Form
   const [showCouponModal, setShowCouponModal] = useState(false);
   const [newCoupon, setNewCoupon] = useState({
@@ -1002,6 +1045,79 @@ export default function AdminDashboardPage() {
                 {savingSettings ? 'Saving Settings...' : 'Save Payment Configurations'}
               </button>
             </form>
+
+            {/* Admin Security & Password Change */}
+            <div className="pt-6 border-t border-[#E7E9F2]">
+              <div className="border-b border-[#E7E9F2] pb-3 mb-4">
+                <h3 className="text-lg font-black text-[#111426] flex items-center gap-2">
+                  <ShieldCheck className="w-5 h-5 text-[#5B45F5]" />
+                  <span>Admin Credentials & Security</span>
+                </h3>
+                <p className="text-xs text-[#667085]">
+                  Update your administrator email address and master password.
+                </p>
+              </div>
+
+              <form onSubmit={handleUpdateAdminSecurity} className="p-6 rounded-3xl bg-white border border-[#E7E9F2] shadow-xs space-y-4">
+                <div>
+                  <label className="block text-[#667085] font-bold mb-1">Admin Email Address *</label>
+                  <input
+                    type="email"
+                    required
+                    value={adminSecurityForm.email}
+                    onChange={(e) => setAdminSecurityForm({ ...adminSecurityForm, email: e.target.value })}
+                    className="w-full bg-[#F8F9FC] border border-[#E7E9F2] text-[#111426] rounded-xl p-3 text-xs focus:border-[#5B45F5] outline-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                  <div>
+                    <label className="block text-[#667085] font-bold mb-1">Current Password (Required)</label>
+                    <input
+                      type="password"
+                      required
+                      value={adminSecurityForm.current_password}
+                      onChange={(e) => setAdminSecurityForm({ ...adminSecurityForm, current_password: e.target.value })}
+                      placeholder="Enter current password"
+                      className="w-full bg-[#F8F9FC] border border-[#E7E9F2] text-[#111426] rounded-xl p-3 text-xs focus:border-[#5B45F5] outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[#667085] font-bold mb-1">New Master Password</label>
+                    <input
+                      type="password"
+                      value={adminSecurityForm.new_password}
+                      onChange={(e) => setAdminSecurityForm({ ...adminSecurityForm, new_password: e.target.value })}
+                      placeholder="Leave blank to keep current password"
+                      className="w-full bg-[#F8F9FC] border border-[#E7E9F2] text-[#111426] rounded-xl p-3 text-xs focus:border-[#5B45F5] outline-none"
+                    />
+                  </div>
+                </div>
+
+                {adminSecurityForm.new_password && (
+                  <div>
+                    <label className="block text-[#667085] font-bold mb-1">Confirm New Master Password</label>
+                    <input
+                      type="password"
+                      required
+                      value={adminSecurityForm.confirm_password}
+                      onChange={(e) => setAdminSecurityForm({ ...adminSecurityForm, confirm_password: e.target.value })}
+                      placeholder="Re-enter new password"
+                      className="w-full bg-[#F8F9FC] border border-[#E7E9F2] text-[#111426] rounded-xl p-3 text-xs focus:border-[#5B45F5] outline-none"
+                    />
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={updatingCredentials}
+                  className="px-6 py-3 rounded-xl bg-[#111426] hover:bg-black text-white font-extrabold text-xs transition shadow-md cursor-pointer disabled:opacity-50"
+                >
+                  {updatingCredentials ? 'Updating Credentials...' : 'Save New Admin Credentials'}
+                </button>
+              </form>
+            </div>
           </div>
         )}
 
