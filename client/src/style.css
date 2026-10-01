@@ -2,121 +2,174 @@
 
 @layer base {
   :root {
-    --font-sans: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    --font-heading: 'Manrope', sans-serif;
-    
-    --color-bg: #FFFFFF;
-    --color-text-main: #09090B;
-    --color-text-body: #52525B;
-    --color-accent-purple: #7C4DFF;
-    --color-accent-bright: #8B5CF6;
-    --color-accent-light: #F1ECFF;
-    --color-border-subtle: #E4E4E7;
+    --color-primary-orange: #FF5A1F;
+    --color-dark-navy: #071A2B;
+    --color-deep-blue: #0C2438;
+    --color-light-bg: #F5F7F8;
+    --color-muted-text: #667085;
+    --color-white: #FFFFFF;
+
+    --font-sans: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-heading: 'Plus Jakarta Sans', sans-serif;
+    --font-handwriting: 'Caveat', cursive;
   }
 
   body {
-    background-color: #FFFFFF;
-    color: #52525B;
+    background-color: #F5F7F8;
+    color: #071A2B;
     font-family: var(--font-sans);
     overflow-x: hidden;
-    letter-spacing: -0.015em;
+    letter-spacing: -0.012em;
   }
 
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-heading);
-    color: #09090B;
+    color: #071A2B;
     letter-spacing: -0.025em;
   }
 }
 
-/* Micro-interaction utility classes */
-.btn-primary {
+/* Custom Utilities for ChaloBuddy */
+.font-handwriting {
+  font-family: 'Caveat', cursive;
+}
+
+/* Global 1400px Max-Width Content Container */
+.cb-container {
+  width: 100%;
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+@media (min-width: 640px) {
+  .cb-container {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+@media (min-width: 1024px) {
+  .cb-container {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
+@media (min-width: 1440px) {
+  .cb-container {
+    padding-left: 2.5rem;
+    padding-right: 2.5rem;
+  }
+}
+
+/* Equal Height Flex Cards */
+.cb-card-equal {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.cb-card-footer {
+  margin-top: auto;
+}
+
+/* ChaloBuddy Button Classes */
+.btn-primary-cb {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background-color: #7C4DFF;
+  background-color: #FF5A1F;
   color: #FFFFFF;
-  font-family: var(--font-sans);
   font-weight: 700;
-  border-radius: 12px;
-  transition: transform 200ms ease-out, background-color 200ms ease-out, box-shadow 200ms ease-out;
+  border-radius: 9999px;
+  padding: 0.75rem 1.75rem;
+  transition: all 200ms ease-out;
   cursor: pointer;
-  text-decoration: none;
+  box-shadow: 0 4px 14px rgba(255, 90, 31, 0.35);
 }
-.btn-primary:hover {
-  background-color: #6D3DF5;
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(124, 77, 255, 0.35);
+.btn-primary-cb:hover {
+  background-color: #E04812;
+  transform: translateY(-1.5px);
+  box-shadow: 0 8px 24px rgba(255, 90, 31, 0.45);
 }
-.btn-primary:active {
+.btn-primary-cb:active {
   transform: translateY(0);
 }
 
-.btn-secondary {
+.btn-secondary-cb {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   background-color: #FFFFFF;
-  color: #09090B;
-  font-family: var(--font-sans);
+  color: #071A2B;
   font-weight: 600;
-  border: 1px solid #E4E4E7;
-  border-radius: 12px;
-  transition: transform 200ms ease-out, border-color 200ms ease-out, background-color 200ms ease-out;
+  border: 1px solid #E2E8F0;
+  border-radius: 9999px;
+  padding: 0.75rem 1.75rem;
+  transition: all 200ms ease-out;
   cursor: pointer;
-  text-decoration: none;
 }
-.btn-secondary:hover {
-  background-color: #FAFAFA;
-  border-color: #09090B;
-  transform: translateY(-1px);
+.btn-secondary-cb:hover {
+  background-color: #F8FAFC;
+  border-color: #CBD5E1;
+  transform: translateY(-1.5px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
-.btn-secondary:active {
+.btn-secondary-cb:active {
   transform: translateY(0);
 }
 
+.btn-dark-cb {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #071A2B;
+  color: #FFFFFF;
+  font-weight: 600;
+  border-radius: 9999px;
+  padding: 0.75rem 1.75rem;
+  transition: all 200ms ease-out;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.btn-dark-cb:hover {
+  background-color: #0C2438;
+  transform: translateY(-1.5px);
+  box-shadow: 0 6px 18px rgba(7, 26, 43, 0.35);
+}
+
+/* Card hover animation */
 .card-hover {
-  transition: transform 200ms ease-out, box-shadow 200ms ease-out, border-color 200ms ease-out;
+  transition: transform 250ms ease-out, box-shadow 250ms ease-out, border-color 250ms ease-out;
 }
 .card-hover:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.06), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+  transform: translateY(-4px);
+  box-shadow: 0 16px 32px -8px rgba(7, 26, 43, 0.12), 0 8px 16px -6px rgba(7, 26, 43, 0.08);
 }
 
-/* Marquee infinite scroll animation */
-@keyframes marqueeScroll {
-  0% {
-    transform: translateX(0%);
-  }
-  100% {
-    transform: translateX(-50%);
-  }
+/* Heart button pop micro-interaction */
+@keyframes heartPop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+.animate-heart-pop {
+  animation: heartPop 300ms ease-out;
 }
 
-.animate-marquee {
-  display: flex;
-  width: max-content;
-  animation: marqueeScroll 28s linear infinite;
-}
-
-.animate-marquee:hover {
-  animation-play-state: paused;
-}
-
-/* Custom minimal scrollbar */
+/* Smooth minimal scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #F4F4F5;
+  background: #F1F5F9;
 }
 ::-webkit-scrollbar-thumb {
-  background: #D4D4D8;
-  border-radius: 3px;
+  background: #CBD5E1;
+  border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #A1A1AA;
+  background: #94A3B8;
 }
 
 .no-scrollbar::-webkit-scrollbar {

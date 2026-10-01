@@ -1,184 +1,268 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useStore } from '../context/StoreContext';
-import { Search, X, ArrowRight, ShieldCheck } from 'lucide-react';
+import {
+  Search,
+  X,
+  MapPin,
+  Calendar,
+  Home,
+  Users,
+  ArrowRight,
+  Sparkles,
+} from 'lucide-react';
 
-export default function SearchModal({ isOpen, onClose }) {
-  const { products, navigate } = useStore();
-  const [searchTerm, setSearchTerm] = useState('');
-  const inputRef = useRef(null);
+export default function SearchModal() {
+  const {
+    searchModalOpen,
+    setSearchModalOpen,
+    trips,
+    stays,
+    buddies,
+    formatPrice,
+    navigate,
+  } = useStore();
 
-  useEffect(() => {
-    if (isOpen) {
-      setTimeout(() => inputRef.current?.focus(), 50);
-    } else {
-      setSearchTerm('');
-    }
-  }, [isOpen]);
+  const [query, setQuery] = useState('');
 
-  useEffect(() => {
-    function handleKeyDown(e) {
-      if (e.key === 'Escape' && isOpen) {
-        onClose();
-      }
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        if (isOpen) onClose();
-        else onClose(true); // Toggle
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  if (!searchModalOpen) return null;
 
-  if (!isOpen) return null;
+  const filteredTrips = useMemo(() => {
+    if (!query.trim()) return trips.slice(0, 3);
+    const q = query.toLowerCase();
+    return trips.filter(
+      (t) =>
+        t.title.toLowerCase().includes(q) ||
+        t.destination.toLowerCase().includes(q) ||
+        t.difficulty.toLowerCase().includes(q) ||
+        (t.vibes || []).some((v) => v.toLowerCase().includes(q))
+    );
+  }, [trips, query]);
 
-  const productList = Array.isArray(products) ? products : [];
-  const filteredProducts = searchTerm.trim()
-    ? productList.filter(p => {
-        const title = (p.title || p.name || '').toLowerCase();
-        const cat = (p.category || p.category_name || '').toLowerCase();
-        const term = searchTerm.toLowerCase();
-        return title.includes(term) || cat.includes(term);
-      })
-    : [];
+  const filteredStays = useMemo(() => {
+    if (!query.trim()) return stays.slice(0, 2);
+    const q = query.toLowerCase();
+    return stays.filter(
+      (s) =>
+        s.name.toLowerCase().includes(q) ||
+        s.location.toLowerCase().includes(q) ||
+        s.propertyType.toLowerCase().includes(q)
+    );
+  }, [stays, query]);
 
-  const handleSelectProduct = (product) => {
-    onClose();
-    navigate('product', { id: product.id });
+  const filteredBuddies = useMemo(() => {
+    if (!query.trim()) return buddies.slice(0, 2);
+    const q = query.toLowerCase();
+    return buddies.filter(
+      (b) =>
+        b.name.toLowerCase().includes(q) ||
+        b.location.toLowerCase().includes(q) ||
+        (b.travelStyle || []).some((s) => s.toLowerCase().includes(q))
+    );
+  }, [buddies, query]);
+
+  const handleSelectTrip = (id) => {
+    setSearchModalOpen(false);
+    navigate('trip-detail', { id });
   };
 
-  const handleSearchSubmit = (e) => {
-    e.preventDefault();
-    if (searchTerm.trim()) {
-      onClose();
-      navigate('catalog', { search: searchTerm.trim() });
-    }
+  const handleSelectStay = (id) => {
+    setSearchModalOpen(false);
+    navigate('stay-detail', { id });
+  };
+
+  const handleSelectBuddy = (id) => {
+    setSearchModalOpen(false);
+    navigate('profile', { id });
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-black/60 backdrop-blur-xs">
-      {/* Click outside backdrop */}
-      <div className="fixed inset-0" onClick={onClose} />
-
-      <div className="relative w-full max-w-2xl bg-white border border-black shadow-2xl z-10 animate-in fade-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 p-4 bg-black/75 backdrop-blur-md animate-fade-in">
+      <div className="bg-[#0C2438] text-white w-full max-w-2xl rounded-3xl border border-white/15 shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
         {/* Search Input Bar */}
-        <form onSubmit={handleSearchSubmit} className="flex items-center border-b border-black px-4 py-3">
-          <Search className="w-5 h-5 text-black shrink-0 mr-3" strokeWidth={1.75} />
+        <div className="p-4 border-b border-white/10 flex items-center gap-3 bg-[#071A2B]">
+          <Search className="w-5 h-5 text-[#FF5A1F] flex-shrink-0" />
           <input
-            ref={inputRef}
             type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search accounts, skins, games..."
-            className="w-full bg-transparent text-[#09090B] text-base outline-none placeholder:text-neutral-400 font-sans"
+            autoFocus
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search destination, trip name, stay, or travel buddy (e.g. Spiti, Manali, Trekking)..."
+            className="w-full bg-transparent text-sm text-white placeholder-slate-400 focus:outline-none"
           />
-          {searchTerm && (
+          {query && (
             <button
-              type="button"
-              onClick={() => setSearchTerm('')}
-              className="text-neutral-400 hover:text-[#09090B] p-1 rounded-md hover:bg-neutral-100 transition-colors mr-2 cursor-pointer"
-              aria-label="Clear search"
+              onClick={() => setQuery('')}
+              className="text-xs text-slate-400 hover:text-white"
             >
-              <X className="w-4 h-4" />
+              Clear
             </button>
           )}
           <button
-            type="button"
-            onClick={onClose}
-            className="p-1 rounded-lg text-neutral-400 hover:text-black hover:bg-neutral-100 transition-colors cursor-pointer ml-1"
-            title="Close"
-            aria-label="Close"
+            onClick={() => setSearchModalOpen(false)}
+            className="p-1 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
-        </form>
+        </div>
 
-        {/* Results Area */}
-        <div className="max-h-[60vh] overflow-y-auto p-4">
-          {searchTerm.trim() ? (
+        {/* Results List */}
+        <div className="p-4 overflow-y-auto space-y-6">
+          {/* Quick Popular Keywords */}
+          {!query && (
             <div>
-              <div className="flex items-center justify-between text-xs uppercase tracking-wider text-neutral-500 font-semibold mb-3">
-                <span>Products ({filteredProducts.length})</span>
-                {filteredProducts.length > 0 && (
-                  <button
-                    onClick={handleSearchSubmit}
-                    className="text-black hover:underline flex items-center gap-1 cursor-pointer"
-                  >
-                    View all results <ArrowRight className="w-3 h-3" />
-                  </button>
-                )}
-              </div>
-
-              {filteredProducts.length === 0 ? (
-                <div className="py-12 text-center text-neutral-500">
-                  <p className="font-medium text-black">No products found for "{searchTerm}"</p>
-                  <p className="text-xs mt-1">Try searching for Valorant, BGMI, Youtube, or skin names</p>
-                </div>
-              ) : (
-                <div className="divide-y divide-neutral-100">
-                  {filteredProducts.slice(0, 6).map((product) => (
-                    <div
-                      key={product.id}
-                      onClick={() => handleSelectProduct(product)}
-                      className="flex items-center gap-4 py-3 px-2 hover:bg-neutral-50 cursor-pointer transition"
-                    >
-                      <div className="w-14 h-14 bg-neutral-100 shrink-0 border border-neutral-200 overflow-hidden flex items-center justify-center">
-                        <img
-                          src={product.image || (product.images && product.images[0]) || '/shopify_assets/hero.png'}
-                          alt={product.title || product.name}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            e.currentTarget.src = '/shopify_assets/hero.png';
-                          }}
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-bold uppercase tracking-wider bg-neutral-100 text-neutral-800 px-1.5 py-0.5 border border-neutral-200">
-                            {product.category || product.category_name || 'Item'}
-                          </span>
-                          <span className="text-[10px] text-emerald-600 flex items-center gap-0.5 font-medium">
-                            <ShieldCheck className="w-3 h-3" /> Instant
-                          </span>
-                        </div>
-                        <h4 className="text-sm font-semibold text-black truncate mt-0.5">
-                          {product.title || product.name}
-                        </h4>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <div className="text-sm font-bold text-black font-sans">
-                          Rs. {Number(product.price).toFixed(2)}
-                        </div>
-                        {product.compareAtPrice && product.compareAtPrice > product.price && (
-                          <div className="text-xs text-neutral-400 line-through">
-                            Rs. {Number(product.compareAtPrice).toFixed(2)}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="py-6">
-              <div className="text-xs uppercase tracking-wider text-neutral-500 font-bold mb-3">
-                Popular Categories
-              </div>
+              <p className="text-[11px] uppercase font-bold tracking-wider text-slate-400 mb-2">
+                Trending Searches
+              </p>
               <div className="flex flex-wrap gap-2">
-                {['Valorant', 'BGMI', 'YouTube', 'PUBG Mobile', 'Free Fire'].map((cat) => (
+                {['Spiti Valley', 'Kasol', 'Kedarkantha Trek', 'Goa Beaches', 'Old Manali', 'Meghalaya'].map((tag) => (
                   <button
-                    key={cat}
-                    onClick={() => {
-                      onClose();
-                      navigate('catalog', { category: cat });
-                    }}
-                    className="text-xs font-semibold px-3 py-1.5 border border-neutral-200 hover:border-black transition cursor-pointer"
+                    key={tag}
+                    onClick={() => setQuery(tag)}
+                    className="text-xs px-3 py-1 rounded-full bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 cursor-pointer"
                   >
-                    {cat}
+                    {tag}
                   </button>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* Trips Section */}
+          {filteredTrips.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-[#FF5A1F] uppercase tracking-wider flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5" />
+                  Trips ({filteredTrips.length})
+                </span>
+                <button
+                  onClick={() => {
+                    setSearchModalOpen(false);
+                    navigate('trips');
+                  }}
+                  className="text-xs text-slate-400 hover:text-white hover:underline cursor-pointer"
+                >
+                  View all trips →
+                </button>
+              </div>
+
+              <div className="divide-y divide-white/5">
+                {filteredTrips.map((trip) => (
+                  <div
+                    key={trip.id}
+                    onClick={() => handleSelectTrip(trip.id)}
+                    className="p-3 rounded-2xl hover:bg-white/5 cursor-pointer transition-colors flex items-center justify-between gap-3 group"
+                  >
+                    <div className="flex items-center gap-3 overflow-hidden">
+                      <img
+                        src={trip.images[0]}
+                        alt={trip.title}
+                        className="w-12 h-12 rounded-xl object-cover flex-shrink-0"
+                      />
+                      <div className="overflow-hidden">
+                        <p className="font-bold text-xs text-white group-hover:text-[#FF5A1F] transition-colors truncate">
+                          {trip.title}
+                        </p>
+                        <p className="text-[11px] text-slate-400 truncate">
+                          {trip.destination} • {trip.dates}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <span className="text-xs font-bold text-white block">
+                        {formatPrice(trip.price)}
+                      </span>
+                      <span className="text-[10px] text-emerald-400 font-semibold">{trip.difficulty}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Stays Section */}
+          {filteredStays.length > 0 && (
+            <div className="space-y-2">
+              <span className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                <Home className="w-3.5 h-3.5" />
+                Stays & Cottages ({filteredStays.length})
+              </span>
+
+              <div className="divide-y divide-white/5">
+                {filteredStays.map((stay) => (
+                  <div
+                    key={stay.id}
+                    onClick={() => handleSelectStay(stay.id)}
+                    className="p-3 rounded-2xl hover:bg-white/5 cursor-pointer transition-colors flex items-center justify-between gap-3 group"
+                  >
+                    <div className="flex items-center gap-3 overflow-hidden">
+                      <img
+                        src={stay.images[0]}
+                        alt={stay.name}
+                        className="w-12 h-12 rounded-xl object-cover flex-shrink-0"
+                      />
+                      <div className="overflow-hidden">
+                        <p className="font-bold text-xs text-white group-hover:text-amber-400 transition-colors truncate">
+                          {stay.name}
+                        </p>
+                        <p className="text-[11px] text-slate-400 truncate">
+                          {stay.location} • {stay.propertyType}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <span className="text-xs font-bold text-white block">
+                        {formatPrice(stay.pricePerNight)}
+                      </span>
+                      <span className="text-[10px] text-slate-400">/ night</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Travel Buddies Section */}
+          {filteredBuddies.length > 0 && (
+            <div className="space-y-2">
+              <span className="text-xs font-bold text-sky-400 uppercase tracking-wider flex items-center gap-1.5">
+                <Users className="w-3.5 h-3.5" />
+                Travel Buddies ({filteredBuddies.length})
+              </span>
+
+              <div className="divide-y divide-white/5">
+                {filteredBuddies.map((buddy) => (
+                  <div
+                    key={buddy.id}
+                    onClick={() => handleSelectBuddy(buddy.id)}
+                    className="p-3 rounded-2xl hover:bg-white/5 cursor-pointer transition-colors flex items-center justify-between gap-3 group"
+                  >
+                    <div className="flex items-center gap-3 overflow-hidden">
+                      <img
+                        src={buddy.avatar}
+                        alt={buddy.name}
+                        className="w-10 h-10 rounded-full object-cover flex-shrink-0 ring-1 ring-sky-400"
+                      />
+                      <div className="overflow-hidden">
+                        <p className="font-bold text-xs text-white group-hover:text-sky-400 transition-colors truncate">
+                          {buddy.name}, {buddy.age}
+                        </p>
+                        <p className="text-[11px] text-slate-400 truncate">
+                          {buddy.location} • {buddy.tripsCompleted} trips done
+                        </p>
+                      </div>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-white group-hover:translate-x-1 transition-all" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {filteredTrips.length === 0 && filteredStays.length === 0 && filteredBuddies.length === 0 && (
+            <div className="text-center py-8">
+              <p className="text-slate-400 text-xs">No results found for "{query}".</p>
+              <p className="text-slate-500 text-[11px] mt-1">Try searching for Manali, Spiti, Goa, or Trekking.</p>
             </div>
           )}
         </div>

@@ -2,26 +2,37 @@ import React, { useEffect } from 'react';
 import { useStore } from './context/StoreContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
-import CartDrawer from './components/CartDrawer';
-import AuthModal from './components/AuthModal';
 import MobileBottomNav from './components/MobileBottomNav';
 import Toast from './components/Toast';
 
+// Modals
+import JoinTripModal from './components/JoinTripModal';
+import ReserveStayModal from './components/ReserveStayModal';
+import VideoTourModal from './components/VideoTourModal';
+import SearchModal from './components/SearchModal';
+import ShareModal from './components/ShareModal';
+import WriteStoryModal from './components/WriteStoryModal';
+import WriteReviewModal from './components/WriteReviewModal';
+import AuthModal from './components/AuthModal';
+
+// Pages
 import HomePage from './pages/HomePage';
-import CatalogPage from './pages/CatalogPage';
-import ProductDetailPage from './pages/ProductDetailPage';
-import ProcessPage from './pages/ProcessPage';
-import ContactPage from './pages/ContactPage';
-import CartPage from './pages/CartPage';
-import CheckoutPage from './pages/CheckoutPage';
-import PaymentPage from './pages/PaymentPage';
-import OrderTrackingPage from './pages/OrderTrackingPage';
-import DigitalDeliveryPage from './pages/DigitalDeliveryPage';
-import AccountDashboardPage from './pages/AccountDashboardPage';
+import TripsPage from './pages/TripsPage';
+import TripDetailPage from './pages/TripDetailPage';
+import ListTripPage from './pages/ListTripPage';
+import PlanTripPage from './pages/PlanTripPage';
+import PlanResultPage from './pages/PlanResultPage';
+import StaysPage from './pages/StaysPage';
+import StayDetailPage from './pages/StayDetailPage';
+import BuddiesPage from './pages/BuddiesPage';
+import UserProfilePage from './pages/UserProfilePage';
+import MessagesPage from './pages/MessagesPage';
+import MyTripsPage from './pages/MyTripsPage';
+import SavedPage from './pages/SavedPage';
+import StoriesPage from './pages/StoriesPage';
+import AboutPage from './pages/AboutPage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
-import CustomerSupportPage from './pages/CustomerSupportPage';
-import LegalPage from './pages/LegalPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 
 export default function App() {
@@ -40,37 +51,37 @@ export default function App() {
       const page = parts[0];
       const param = parts[1];
 
-      if (page === 'games' || page === 'catalog') {
-        navigate('catalog', { category: param || 'all' });
-      } else if (page === 'product' && param) {
-        navigate('product', { id: param });
-      } else if (page === 'orders') {
-        navigate('orders', { id: param });
-      } else if (page === 'delivery' && param) {
-        navigate('delivery', { id: param });
-      } else if (page === 'account') {
-        navigate('account', { tab: param || 'overview' });
-      } else if (page === 'payment') {
-        navigate('payment', { orderId: param, orderNumber: param });
+      if (page === 'trips' && param) {
+        navigate('trip-detail', { id: param });
+      } else if (page === 'stays' && param) {
+        navigate('stay-detail', { id: param });
+      } else if (page === 'profile' && param) {
+        navigate('profile', { id: param });
+      } else if (page === 'my-trips') {
+        navigate('my-trips', { tab: param || 'upcoming' });
       } else if (
         [
           'home',
-          'catalog',
-          'process',
-          'contact',
-          'cart',
-          'checkout',
+          'trips',
+          'trip-detail',
+          'list-trip',
+          'plan-trip',
+          'plan-result',
+          'stays',
+          'stay-detail',
+          'buddies',
+          'profile',
+          'messages',
+          'my-trips',
+          'saved',
+          'stories',
+          'about',
           'login',
           'signup',
-          'support',
-          'terms',
-          'privacy',
-          'refund-policy',
-          'acceptable-use',
-          'admin'
+          'admin',
         ].includes(page)
       ) {
-        navigate(page);
+        navigate(page, { id: param });
       }
     };
 
@@ -80,41 +91,38 @@ export default function App() {
 
   const renderCurrentPage = () => {
     switch (currentRoute.page) {
-      case 'games':
-      case 'catalog':
-        return <CatalogPage />;
-      case 'product':
-        return <ProductDetailPage />;
-      case 'process':
-        return <ProcessPage />;
-      case 'contact':
-        return <ContactPage />;
-      case 'cart':
-        return <CartPage />;
-      case 'checkout':
-        return <CheckoutPage />;
-      case 'payment':
-        return <PaymentPage />;
-      case 'orders':
-      case 'tracking':
-        return <OrderTrackingPage />;
-      case 'delivery':
-        return <DigitalDeliveryPage />;
-      case 'account':
-      case 'customer-dashboard':
-        return <AccountDashboardPage />;
+      case 'trips':
+        return <TripsPage />;
+      case 'trip-detail':
+        return <TripDetailPage />;
+      case 'list-trip':
+        return <ListTripPage />;
+      case 'plan-trip':
+        return <PlanTripPage />;
+      case 'plan-result':
+        return <PlanResultPage />;
+      case 'stays':
+        return <StaysPage />;
+      case 'stay-detail':
+        return <StayDetailPage />;
+      case 'buddies':
+        return <BuddiesPage />;
+      case 'profile':
+        return <UserProfilePage />;
+      case 'messages':
+        return <MessagesPage />;
+      case 'my-trips':
+        return <MyTripsPage />;
+      case 'saved':
+        return <SavedPage />;
+      case 'stories':
+        return <StoriesPage />;
+      case 'about':
+        return <AboutPage />;
       case 'login':
         return <LoginPage />;
       case 'signup':
         return <SignupPage />;
-      case 'support':
-        return <CustomerSupportPage />;
-      case 'terms':
-      case 'privacy':
-      case 'refund-policy':
-      case 'acceptable-use':
-      case 'legal':
-        return <LegalPage />;
       case 'admin':
         return <AdminDashboardPage />;
       case 'home':
@@ -124,29 +132,33 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FFFFFF] text-[#000000] flex flex-col font-sans selection:bg-black selection:text-white pb-16 sm:pb-0">
+    <div className="min-h-screen bg-[#F5F7F8] text-[#071A2B] flex flex-col font-sans selection:bg-[#FF5A1F] selection:text-white pb-14 lg:pb-0">
       {/* Global Navbar */}
       <Navbar />
 
-      {/* Page View */}
+      {/* Main Page View */}
       <main className="flex-1">
         {renderCurrentPage()}
       </main>
 
-      {/* Slide-out Cart Drawer */}
-      <CartDrawer />
-
-      {/* Required Auth Modal */}
+      {/* Global Interactive Modals */}
+      <JoinTripModal />
+      <ReserveStayModal />
+      <VideoTourModal />
+      <SearchModal />
+      <ShareModal />
+      <WriteStoryModal />
+      <WriteReviewModal />
       <AuthModal />
 
-      {/* Toast Notification Container */}
+      {/* Toast Alert Popups */}
       <Toast />
 
-      {/* Mobile Bottom Navigation */}
+      {/* Mobile Bottom Navigation Bar */}
       {currentRoute.page !== 'admin' && <MobileBottomNav />}
 
-      {/* Global Footer */}
-      {currentRoute.page !== 'admin' && <Footer />}
+      {/* Global Premium Footer */}
+      {currentRoute.page !== 'admin' && currentRoute.page !== 'messages' && <Footer />}
     </div>
   );
 }
