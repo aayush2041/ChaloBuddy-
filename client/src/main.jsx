@@ -36,9 +36,9 @@ class ErrorBoundary extends React.Component {
               window.location.hash = '';
               window.location.href = window.location.pathname + '?v=' + Date.now();
             }}
-            style={{ padding: '12px 24px', backgroundColor: '#000', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 'bold', textTransform: 'uppercase' }}
+            style={{ padding: '12px 24px', backgroundColor: '#FF5A1F', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 'bold', textTransform: 'uppercase', borderRadius: '12px' }}
           >
-            Reload ValorVault
+            Reload ChaloBuddy
           </button>
         </div>
       );
