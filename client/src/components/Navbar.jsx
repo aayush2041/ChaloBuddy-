@@ -17,6 +17,7 @@ import {
   LogOut,
   MapPin,
   Sparkles,
+  Users,
 } from 'lucide-react';
 
 export default function Navbar() {
@@ -182,7 +183,7 @@ export default function Navbar() {
           </div>
 
           {/* Right: Actions, Search, Currency, Notifications, Profile */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 md:gap-3">
             {/* Search Spotlight Trigger */}
             <button
               onClick={() => setSearchModalOpen(true)}
@@ -192,8 +193,8 @@ export default function Navbar() {
               <Search className="w-5 h-5" />
             </button>
 
-            {/* Currency Selector Dropdown */}
-            <div className="relative">
+            {/* Currency Selector Dropdown (Desktop / Tablet) */}
+            <div className="relative hidden md:block">
               <button
                 onClick={() => setCurrencyDropdownOpen(!currencyDropdownOpen)}
                 className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer border border-white/10"
@@ -243,7 +244,7 @@ export default function Navbar() {
                 )}
               </button>
               {notifDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-[#071A2B] border border-white/15 rounded-2xl shadow-2xl overflow-hidden z-50">
+                <div className="absolute right-0 mt-2 w-[calc(100vw-2rem)] max-w-sm sm:w-96 bg-[#071A2B] border border-white/15 rounded-2xl shadow-2xl overflow-hidden z-50">
                   <div className="p-3.5 border-b border-white/10 flex items-center justify-between bg-[#0C2438]">
                     <div className="flex items-center gap-2">
                       <Bell className="w-4 h-4 text-[#FF5A1F]" />
@@ -292,28 +293,29 @@ export default function Navbar() {
               )}
             </div>
 
-            {/* Messages Icon */}
+            {/* Messages Icon (Desktop / Tablet) */}
             <button
               onClick={() => handleNavClick('messages')}
-              className="relative p-2 rounded-full hover:bg-white/10 text-slate-200 hover:text-white transition-colors cursor-pointer"
+              className="relative p-2 rounded-full hover:bg-white/10 text-slate-200 hover:text-white transition-colors cursor-pointer hidden md:flex"
               title="Chat & Messages"
             >
               <MessageSquare className="w-5 h-5" />
               <span className="absolute top-1 right-1 w-2 h-2 bg-[#FF5A1F] rounded-full"></span>
             </button>
 
-            {/* Saved Items Heart */}
+            {/* Saved Items Heart (Desktop / Tablet) */}
             <button
               onClick={() => handleNavClick('saved')}
-              className="p-2 rounded-full hover:bg-white/10 text-slate-200 hover:text-white transition-colors cursor-pointer hidden sm:block"
+              className="p-2 rounded-full hover:bg-white/10 text-slate-200 hover:text-white transition-colors cursor-pointer hidden md:flex"
               title="Saved Trips & Stays"
             >
               <Heart className="w-5 h-5" />
             </button>
 
-            {/* User Profile / Auth State */}
-            {currentUser ? (
-              <div className="relative">
+            {/* User Profile / Auth State (Desktop / Tablet) */}
+            <div className="hidden md:flex items-center">
+              {currentUser ? (
+                <div className="relative">
                 <button
                   onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
                   className="flex items-center gap-2 p-1 pl-2 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 transition-all cursor-pointer"
@@ -442,137 +444,265 @@ export default function Navbar() {
                 </button>
               </div>
             )}
+            </div>
 
             {/* Mobile Menu Hamburger Button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="lg:hidden p-2 rounded-lg text-slate-200 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              aria-label="Toggle navigation menu"
             >
-              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              {mobileMenuOpen ? <X className="w-6 h-6 text-[#FF5A1F]" /> : <Menu className="w-6 h-6" />}
             </button>
           </div>
         </div>
       </div>
 
-      {/* Mobile Drawer Menu */}
+      {/* Mobile Drawer Menu (Full slide-down overlay sheet) */}
       {mobileMenuOpen && (
-        <div className="lg:hidden bg-[#071A2B] border-b border-white/10 px-4 pt-3 pb-6 space-y-3">
-          <nav className="flex flex-col space-y-2 text-sm font-medium">
-            <button
-              onClick={() => handleNavClick('home')}
-              className="text-left py-2 px-3 rounded-lg hover:bg-white/10 text-white font-semibold"
-            >
-              Explore Home
-            </button>
-            <button
-              onClick={() => handleNavClick('trips')}
-              className="text-left py-2 px-3 rounded-lg hover:bg-white/10 text-white font-semibold"
-            >
-              Find a Trip
-            </button>
-            <button
-              onClick={() => handleNavClick('list-trip')}
-              className="text-left py-2 px-3 rounded-lg hover:bg-white/10 text-[#FF5A1F] font-bold flex items-center justify-between"
-            >
-              <span>List a Trip</span>
-              <span className="text-[10px] bg-[#FF5A1F] text-white px-2 py-0.5 rounded-full font-bold">Host</span>
-            </button>
-            <button
-              onClick={() => handleNavClick('plan-trip')}
-              className="text-left py-2 px-3 rounded-lg hover:bg-white/10 text-white font-semibold flex items-center gap-2"
-            >
-              <Sparkles className="w-4 h-4 text-[#FF5A1F]" />
-              <span>Smart Trip Planner</span>
-            </button>
-            <button
-              onClick={() => handleNavClick('stays')}
-              className="text-left py-2 px-3 rounded-lg hover:bg-white/10 text-white font-semibold"
-            >
-              Find Stays
-            </button>
-            <button
-              onClick={() => handleNavClick('buddies')}
-              className="text-left py-2 px-3 rounded-lg hover:bg-white/10 text-white font-semibold"
-            >
-              Find Travel Buddies
-            </button>
-            <button
-              onClick={() => handleNavClick('my-trips')}
-              className="text-left py-2 px-3 rounded-lg hover:bg-white/10 text-white font-semibold"
-            >
-              My Trips (Workspace)
-            </button>
-            <button
-              onClick={() => handleNavClick('stories')}
-              className="text-left py-2 px-3 rounded-lg hover:bg-white/10 text-white font-semibold"
-            >
-              Travel Stories & Community
-            </button>
-            <button
-              onClick={() => handleNavClick('saved')}
-              className="text-left py-2 px-3 rounded-lg hover:bg-white/10 text-white font-semibold"
-            >
-              Saved Items
-            </button>
-            <button
-              onClick={() => handleNavClick('admin')}
-              className="text-left py-2 px-3 rounded-lg hover:bg-white/10 text-emerald-400 font-semibold"
-            >
-              Admin Dashboard
-            </button>
-            <button
-              onClick={() => handleNavClick('about')}
-              className="text-left py-2 px-3 rounded-lg hover:bg-white/10 text-slate-300 font-semibold"
-            >
-              About ChaloBuddy
-            </button>
-          </nav>
-
-          {/* Mobile Currency & Auth Footer */}
-          <div className="pt-4 mt-2 border-t border-white/10 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-400">Currency:</span>
-              <div className="flex gap-1">
-                {['INR', 'USD', 'EUR'].map((cur) => (
+        <div className="lg:hidden fixed inset-x-0 top-[72px] bottom-0 bg-[#071A2B]/98 backdrop-blur-2xl z-50 flex flex-col overflow-y-auto border-t border-white/10 pb-8 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="flex-1 px-4 py-4 space-y-4 max-w-md mx-auto w-full">
+            
+            {/* 1. User Profile or Auth Block */}
+            {currentUser ? (
+              <div className="bg-[#0C2438] border border-white/15 rounded-2xl p-4 shadow-lg">
+                <div className="flex items-center gap-3">
+                  <img
+                    src={currentUser.avatar}
+                    alt={currentUser.name}
+                    className="w-12 h-12 rounded-full object-cover ring-2 ring-[#FF5A1F]"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-white text-base truncate">{currentUser.name}</p>
+                    <p className="text-xs text-[#FF5A1F] font-semibold capitalize flex items-center gap-1 mt-0.5">
+                      <Shield className="w-3.5 h-3.5" />
+                      {currentUser.role} • {currentUser.rating}★
+                    </p>
+                  </div>
                   <button
-                    key={cur}
-                    onClick={() => setCurrency(cur)}
-                    className={`px-2.5 py-1 rounded-full text-xs font-bold transition-all ${
-                      currency === cur
-                        ? 'bg-[#FF5A1F] text-white'
-                        : 'bg-white/10 text-slate-300 hover:bg-white/20'
-                    }`}
+                    onClick={() => handleNavClick('profile', { id: currentUser.id })}
+                    className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold cursor-pointer"
                   >
-                    {cur}
+                    Profile
                   </button>
-                ))}
-              </div>
-            </div>
+                </div>
 
-            {!currentUser && (
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => {
-                    setAuthModalMode('login');
-                    setAuthModalOpen(true);
-                    setMobileMenuOpen(false);
-                  }}
-                  className="text-xs font-semibold px-3 py-1.5 text-slate-200 hover:text-white"
-                >
-                  Log in
-                </button>
-                <button
-                  onClick={() => {
-                    setAuthModalMode('signup');
-                    setAuthModalOpen(true);
-                    setMobileMenuOpen(false);
-                  }}
-                  className="btn-primary-cb !py-1 !px-3 !text-xs font-bold"
-                >
-                  Sign up
-                </button>
+                {/* Quick Profile Shortcuts */}
+                <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-white/10">
+                  <button
+                    onClick={() => handleNavClick('my-trips')}
+                    className="flex items-center gap-2 p-2 rounded-xl bg-white/5 hover:bg-white/10 text-xs text-slate-200 font-medium cursor-pointer"
+                  >
+                    <Calendar className="w-4 h-4 text-[#FF5A1F]" />
+                    <span className="truncate">My Trips</span>
+                  </button>
+                  <button
+                    onClick={() => handleNavClick('messages')}
+                    className="flex items-center gap-2 p-2 rounded-xl bg-white/5 hover:bg-white/10 text-xs text-slate-200 font-medium cursor-pointer"
+                  >
+                    <MessageSquare className="w-4 h-4 text-[#FF5A1F]" />
+                    <span className="truncate">Messages</span>
+                  </button>
+                </div>
+
+                {/* Tester Persona Switcher */}
+                <div className="mt-3 pt-3 border-t border-white/10">
+                  <p className="text-[10px] uppercase font-bold tracking-wider text-slate-400 mb-1.5">
+                    Switch Persona (Tester)
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {allUsers.slice(0, 3).map((u) => (
+                      <button
+                        key={u.id}
+                        onClick={() => switchUser(u)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium cursor-pointer transition-all ${
+                          currentUser.id === u.id
+                            ? 'bg-[#FF5A1F] text-white font-bold'
+                            : 'bg-white/10 text-slate-300 hover:bg-white/20'
+                        }`}
+                      >
+                        {u.name.split(' ')[0]} ({u.role})
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-[#0C2438] border border-white/15 rounded-2xl p-4 shadow-lg text-center">
+                <p className="text-sm font-bold text-white mb-1">Welcome to ChaloBuddy</p>
+                <p className="text-xs text-slate-300 mb-3.5">Join verified travelers, plan smart trips and connect with buddies.</p>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <button
+                    onClick={() => {
+                      setAuthModalMode('login');
+                      setAuthModalOpen(true);
+                      setMobileMenuOpen(false);
+                    }}
+                    className="py-2 px-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs cursor-pointer"
+                  >
+                    Log in
+                  </button>
+                  <button
+                    onClick={() => {
+                      setAuthModalMode('signup');
+                      setAuthModalOpen(true);
+                      setMobileMenuOpen(false);
+                    }}
+                    className="btn-primary-cb !py-2 !px-3 !text-xs font-bold cursor-pointer"
+                  >
+                    Sign up
+                  </button>
+                </div>
               </div>
             )}
+
+            {/* 2. Navigation Links */}
+            <nav className="space-y-1 bg-[#0C2438]/50 border border-white/10 rounded-2xl p-2">
+              <button
+                onClick={() => handleNavClick('home')}
+                className={`w-full text-left py-2.5 px-3.5 rounded-xl hover:bg-white/10 text-xs sm:text-sm font-semibold flex items-center gap-3 cursor-pointer ${
+                  currentRoute.page === 'home' ? 'text-[#FF5A1F] bg-white/5' : 'text-white'
+                }`}
+              >
+                <Compass className="w-4 h-4 text-[#FF5A1F]" />
+                <span>Explore Home</span>
+              </button>
+              <button
+                onClick={() => handleNavClick('trips')}
+                className={`w-full text-left py-2.5 px-3.5 rounded-xl hover:bg-white/10 text-xs sm:text-sm font-semibold flex items-center gap-3 cursor-pointer ${
+                  currentRoute.page === 'trips' ? 'text-[#FF5A1F] bg-white/5' : 'text-white'
+                }`}
+              >
+                <MapPin className="w-4 h-4 text-[#FF5A1F]" />
+                <span>Find a Trip</span>
+              </button>
+              <button
+                onClick={() => handleNavClick('list-trip')}
+                className={`w-full text-left py-2.5 px-3.5 rounded-xl hover:bg-white/10 text-xs sm:text-sm font-semibold flex items-center justify-between cursor-pointer ${
+                  currentRoute.page === 'list-trip' ? 'text-[#FF5A1F] bg-white/5' : 'text-white'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <PlusCircle className="w-4 h-4 text-[#FF5A1F]" />
+                  <span>List a Trip</span>
+                </div>
+                <span className="text-[10px] bg-[#FF5A1F] text-white px-2 py-0.5 rounded-full font-bold">Host</span>
+              </button>
+              <button
+                onClick={() => handleNavClick('plan-trip')}
+                className={`w-full text-left py-2.5 px-3.5 rounded-xl hover:bg-white/10 text-xs sm:text-sm font-semibold flex items-center justify-between cursor-pointer ${
+                  currentRoute.page === 'plan-trip' || currentRoute.page === 'plan-result' ? 'text-[#FF5A1F] bg-white/5' : 'text-white'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Sparkles className="w-4 h-4 text-[#FF5A1F]" />
+                  <span>Smart Trip Planner</span>
+                </div>
+                <span className="text-[10px] bg-orange-500/20 text-[#FF5A1F] border border-[#FF5A1F]/30 px-1.5 py-0.5 rounded font-bold">AI Plan</span>
+              </button>
+              <button
+                onClick={() => handleNavClick('stays')}
+                className={`w-full text-left py-2.5 px-3.5 rounded-xl hover:bg-white/10 text-xs sm:text-sm font-semibold flex items-center gap-3 cursor-pointer ${
+                  currentRoute.page === 'stays' ? 'text-[#FF5A1F] bg-white/5' : 'text-white'
+                }`}
+              >
+                <MapPin className="w-4 h-4 text-emerald-400" />
+                <span>Find Stays</span>
+              </button>
+              <button
+                onClick={() => handleNavClick('buddies')}
+                className={`w-full text-left py-2.5 px-3.5 rounded-xl hover:bg-white/10 text-xs sm:text-sm font-semibold flex items-center gap-3 cursor-pointer ${
+                  currentRoute.page === 'buddies' ? 'text-[#FF5A1F] bg-white/5' : 'text-white'
+                }`}
+              >
+                <Users className="w-4 h-4 text-sky-400" />
+                <span>Find Travel Buddies</span>
+              </button>
+              <button
+                onClick={() => handleNavClick('messages')}
+                className={`w-full text-left py-2.5 px-3.5 rounded-xl hover:bg-white/10 text-xs sm:text-sm font-semibold flex items-center justify-between cursor-pointer ${
+                  currentRoute.page === 'messages' ? 'text-[#FF5A1F] bg-white/5' : 'text-white'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <MessageSquare className="w-4 h-4 text-[#FF5A1F]" />
+                  <span>Messages & Chat</span>
+                </div>
+                <span className="w-2 h-2 rounded-full bg-[#FF5A1F]"></span>
+              </button>
+              <button
+                onClick={() => handleNavClick('saved')}
+                className={`w-full text-left py-2.5 px-3.5 rounded-xl hover:bg-white/10 text-xs sm:text-sm font-semibold flex items-center gap-3 cursor-pointer ${
+                  currentRoute.page === 'saved' ? 'text-[#FF5A1F] bg-white/5' : 'text-white'
+                }`}
+              >
+                <Heart className="w-4 h-4 text-pink-400" />
+                <span>Saved Trips & Wishlist</span>
+              </button>
+              <button
+                onClick={() => handleNavClick('stories')}
+                className={`w-full text-left py-2.5 px-3.5 rounded-xl hover:bg-white/10 text-xs sm:text-sm font-semibold flex items-center gap-3 cursor-pointer ${
+                  currentRoute.page === 'stories' ? 'text-[#FF5A1F] bg-white/5' : 'text-white'
+                }`}
+              >
+                <Sparkles className="w-4 h-4 text-amber-400" />
+                <span>Stories & Community</span>
+              </button>
+              <button
+                onClick={() => handleNavClick('admin')}
+                className={`w-full text-left py-2.5 px-3.5 rounded-xl hover:bg-white/10 text-xs sm:text-sm font-semibold flex items-center gap-3 cursor-pointer ${
+                  currentRoute.page === 'admin' ? 'text-[#FF5A1F] bg-white/5' : 'text-emerald-400'
+                }`}
+              >
+                <Shield className="w-4 h-4 text-emerald-400" />
+                <span>Admin Dashboard</span>
+              </button>
+              <button
+                onClick={() => handleNavClick('about')}
+                className={`w-full text-left py-2.5 px-3.5 rounded-xl hover:bg-white/10 text-xs sm:text-sm font-semibold flex items-center gap-3 cursor-pointer ${
+                  currentRoute.page === 'about' ? 'text-[#FF5A1F] bg-white/5' : 'text-slate-300'
+                }`}
+              >
+                <Compass className="w-4 h-4 text-slate-400" />
+                <span>About ChaloBuddy</span>
+              </button>
+            </nav>
+
+            {/* 3. Currency Selector & Logout Footer */}
+            <div className="bg-[#0C2438]/50 border border-white/10 rounded-2xl p-3 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-400 font-medium">Currency:</span>
+                <div className="flex gap-1">
+                  {['INR', 'USD', 'EUR'].map((cur) => (
+                    <button
+                      key={cur}
+                      onClick={() => setCurrency(cur)}
+                      className={`px-2.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                        currency === cur
+                          ? 'bg-[#FF5A1F] text-white'
+                          : 'bg-white/10 text-slate-300 hover:bg-white/20'
+                      }`}
+                    >
+                      {cur === 'INR' ? '₹ INR' : cur === 'USD' ? '$ USD' : '€ EUR'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {currentUser && (
+                <button
+                  onClick={() => {
+                    logoutUser();
+                    setMobileMenuOpen(false);
+                  }}
+                  className="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300 font-semibold py-1 px-2.5 rounded-lg hover:bg-red-500/10 cursor-pointer"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Logout</span>
+                </button>
+              )}
+            </div>
+
           </div>
         </div>
       )}
