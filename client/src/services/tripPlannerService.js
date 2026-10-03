@@ -9,8 +9,9 @@ import { calculateFoodBudget } from './foodService.js';
 import { planActivitiesForTrip } from './activityService.js';
 import { calculateLocalTransportCost, buildCompleteBudget } from './budgetService.js';
 import { generateDailyItinerary } from './itineraryService.js';
+import { discoverDestinationAttractions } from './destinationDiscoveryService.js';
 
-export function generateTripPlan(criteria = {}) {
+export async function generateTripPlan(criteria = {}) {
   // 1. Resolve Locations (Origin & Destination)
   const destInput = criteria.destination || criteria.destinationObj || 'Dehradun';
   const destination = resolveLocation(destInput);
@@ -85,13 +86,57 @@ export function generateTripPlan(criteria = {}) {
   });
   const localTransportCost = localTransportData.totalCost;
 
+  // 8. Live destination discovery: use real nearby landmarks for any destination,
+  // while retaining the curated database as a fallback when the external source is unavailable.
+  let liveAttractions = [];
+  try {
+    liveAttractions = await discoverDestinationAttractions(destination, Math.min(14, Math.max(8, days * 3)));
+  } catch {
+    liveAttractions = [];
+  }
+
+  // Use discovered landmarks as the activity source when available. This removes the
+  // old "Manali/Goa/etc." hard limit and prevents fabricated generic attractions.
+  let liveDayPlans = null;
+  if (liveAttractions.length > 0) {
+    const interestTerms = (Array.isArray(criteria.interests) ? criteria.interests : []).map((x) => String(x).toLowerCase());
+    const ranked = [...liveAttractions].sort((a, b) => {
+      const score = (item) => interestTerms.reduce((s, term) =>
+        s + (String(item.title).toLowerCase().includes(term) || String(item.desc).toLowerCase().includes(term) ? 2 : 0), 0);
+      return score(b) - score(a);
+    });
+
+    const usable = ranked.slice(0, Math.max(days * 3, 6));
+    const perDay = Math.max(1, Math.ceil(usable.length / days));
+    liveDayPlans = Array.from({ length: days }, (_, index) => {
+      const chunk = usable.slice(index * perDay, (index + 1) * perDay);
+      return {
+        day: index + 1,
+        neighborhood: destination.city,
+        activities: chunk.map((place) => ({
+          id: place.id,
+          title: place.title,
+          desc: place.desc,
+          category: 'Sightseeing',
+          neighborhood: destination.city,
+          durationHours: 1.5,
+          costPerPerson: 0,
+          image: place.image,
+          sourceUrl: place.url,
+          source: place.source,
+        })),
+      };
+    });
+  }
+
   // 8. Clustered Activities & Entry Fees Estimation
-  const dayPlans = planActivitiesForTrip({
+  const generatedDayPlans = planActivitiesForTrip({
     destination,
     days,
     interests: Array.isArray(criteria.interests) ? criteria.interests : [],
     intensity: criteria.activityIntensity || 'Balanced',
   });
+  const dayPlans = liveDayPlans || generatedDayPlans;
 
   const totalActivityFeePerPerson = dayPlans.reduce((sum, d) => {
     return sum + (d.activities || []).reduce((s, a) => s + (Number(a.costPerPerson) || 0), 0);
