@@ -108,7 +108,8 @@ export function resolveLocation(input) {
     return { ...match };
   }
 
-  // Common city fallback coordinates if not found in destinations database
+  // Legacy aliases for common hubs. Unknown locations must be geocoded by the UI
+  // rather than assigned fabricated coordinates.
   const commonCities = {
     mumbai: { city: 'Mumbai', state: 'Maharashtra', lat: 19.076, lng: 72.8777 },
     bengaluru: { city: 'Bengaluru', state: 'Karnataka', lat: 12.9716, lng: 77.5946 },
@@ -136,17 +137,17 @@ export function resolveLocation(input) {
     };
   }
 
-  // Procedural fallback
-  const firstWord = query.split(',')[0].trim();
-  const capitalized = firstWord.charAt(0).toUpperCase() + firstWord.slice(1);
+  // Never invent coordinates for an unknown place. The planner validates this
+  // and asks the UI to use a geocoded selection instead.
   return {
-    id: firstWord.toLowerCase().replace(/\s+/g, '-'),
+    id: firstWord.toLowerCase().replace(/\\s+/g, '-'),
     city: capitalized,
-    state: 'India',
-    country: 'India',
-    fullName: `${capitalized}, India`,
-    type: 'Travel Destination',
-    lat: 25.0,
-    lng: 78.0,
+    state: '',
+    country: '',
+    fullName: String(input),
+    type: 'Unresolved Location',
+    lat: null,
+    lng: null,
+    unresolved: true,
   };
 }
