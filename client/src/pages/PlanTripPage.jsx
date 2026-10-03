@@ -109,6 +109,7 @@ export default function PlanTripPage() {
   const [travelStyle, setTravelStyle] = useState('Comfortable');
   const [accommodationPreference, setAccommodationPreference] = useState('Hotel');
   const [intercityTransport, setIntercityTransport] = useState('Cheapest available');
+  const [localTransport, setLocalTransport] = useState('Mixed');
   const [interests, setInterests] = useState(['Sightseeing', 'Nature', 'Food & Cafes']);
   const [specialRequirements, setSpecialRequirements] = useState([]);
 
@@ -183,7 +184,7 @@ export default function PlanTripPage() {
       accommodationPreference,
       roomsRequired: recommendedRooms,
       intercityTransportPreference: intercityTransport,
-      localTransportPreference: 'Cab',
+      localTransportPreference: localTransport,
       interests,
       activityIntensity: travelStyle === 'Relaxed' ? 'Relaxed' : travelStyle === 'Adventure' ? 'Packed' : 'Balanced',
       specialRequirements,
@@ -643,6 +644,23 @@ export default function PlanTripPage() {
                 </div>
               </div>
 
+              {/* Local Transport Preference */}
+              <div className="space-y-2 pt-2 border-t border-slate-100">
+                <label className="text-xs font-bold text-slate-700 block">GETTING AROUND LOCALLY</label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {['Mixed', 'Public Transport', 'Cab', 'Rental Car'].map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setLocalTransport(mode)}
+                      className={`p-3 rounded-2xl border text-xs font-bold transition-all cursor-pointer ${localTransport === mode ? 'bg-orange-50 border-[#FF5A1F] text-[#FF5A1F] ring-1 ring-[#FF5A1F]' : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300'}`}
+                    >
+                      {mode}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Interests & Preferences */}
               <div className="space-y-2 pt-2 border-t border-slate-100">
                 <label className="text-xs font-bold text-slate-700 block">WHAT DO YOU LIKE?</label>
@@ -712,7 +730,7 @@ export default function PlanTripPage() {
                   📍 {originObj.city} ➔ {destinationObj.city} • 📅 {days} Days / {nights} Nights • 👥 {totalTravelers} Travelers ({recommendedRooms} Room{recommendedRooms > 1 ? 's' : ''})
                 </p>
                 <p className="text-slate-600">
-                  💰 Budget: ₹{totalCalculatedTargetBudget.toLocaleString('en-IN')} (₹{perPersonTargetBudget.toLocaleString('en-IN')}/person) • 🏨 {accommodationPreference} • 🚆 {intercityTransport}
+                  💰 Budget: ₹{totalCalculatedTargetBudget.toLocaleString('en-IN')} (₹{perPersonTargetBudget.toLocaleString('en-IN')}/person) • 🏨 {accommodationPreference} • 🚆 {intercityTransport} • 🚕 {localTransport}
                 </p>
               </div>
             </div>
