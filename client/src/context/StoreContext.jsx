@@ -780,20 +780,31 @@ export function StoreProvider({ children }) {
   };
 
   // Smart Plan Operations (Section 7)
-  const generatePlan = (criteria = {}) => {
-    const destination = criteria.destination || criteria.destinationObj || (selectedLocation ? selectedLocation.fullName : 'Dehradun, Uttarakhand, India');
-    const origin = criteria.origin || criteria.startingLocation || criteria.originObj || 'Delhi, NCT of Delhi, India';
+  const generatePlan = async (criteria = {}) => {
+    const destination = criteria.destination || criteria.destinationObj || (selectedLocation ? selectedLocation.fullName : null);
+    const origin = criteria.origin || criteria.startingLocation || criteria.originObj || null;
 
-    const generated = generateTripPlan({
-      ...criteria,
-      destination,
-      origin,
-    });
+    if (!destination || !origin) {
+      addToast('Please select both your starting location and destination.', 'error');
+      return null;
+    }
 
-    setSmartPlan(generated);
-    navigate('plan-result');
-    addToast(`Authentic smart plan generated for ${generated.destinationCity || 'your destination'}!`, 'success');
-    return generated;
+    try {
+      const generated = await generateTripPlan({
+        ...criteria,
+        destination,
+        origin,
+      });
+
+      setSmartPlan(generated);
+      navigate('plan-result');
+      addToast(`Smart plan generated for ${generated.destinationCity || 'your destination'}!`, 'success');
+      return generated;
+    } catch (error) {
+      console.error('Smart Planner generation failed:', error);
+      addToast('We could not build this trip right now. Please check the locations and try again.', 'error');
+      return null;
+    }
   };
 
   const removePlanActivity = (dayIndex, actIndex) => {
