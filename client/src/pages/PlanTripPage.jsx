@@ -598,28 +598,6 @@ export default function PlanTripPage() {
                 </p>
               </div>
 
-              {/* Travel Vibe */}
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-700 block">TRAVEL STYLE</label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                  {TRAVEL_STYLES.map((st) => (
-                    <button
-                      key={st.id}
-                      type="button"
-                      onClick={() => setTravelStyle(st.id)}
-                      className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex items-center gap-2 ${
-                        travelStyle === st.id
-                          ? 'bg-orange-50/50 border-[#FF5A1F] ring-1 ring-[#FF5A1F]'
-                          : 'bg-slate-50 border-slate-200 hover:border-slate-300'
-                      }`}
-                    >
-                      <span className="text-base">{st.icon}</span>
-                      <span className="font-bold text-xs text-[#071A2B]">{st.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               {/* Smart planning explanation */}
               <div className="p-5 rounded-2xl bg-gradient-to-br from-orange-50 to-white border border-orange-200">
                 <div className="flex items-start gap-3">
