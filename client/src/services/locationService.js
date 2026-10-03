@@ -139,8 +139,11 @@ export function resolveLocation(input) {
 
   // Never invent coordinates for an unknown place. The planner validates this
   // and asks the UI to use a geocoded selection instead.
+  const firstWord = query.split(',')[0].trim();
+  const capitalized = firstWord ? firstWord.charAt(0).toUpperCase() + firstWord.slice(1) : 'Unknown';
+
   return {
-    id: firstWord.toLowerCase().replace(/\\s+/g, '-'),
+    id: firstWord.toLowerCase().replace(/\s+/g, '-'),
     city: capitalized,
     state: '',
     country: '',
