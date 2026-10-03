@@ -10,6 +10,7 @@ import { planActivitiesForTrip } from './activityService.js';
 import { calculateLocalTransportCost, buildCompleteBudget } from './budgetService.js';
 import { generateDailyItinerary } from './itineraryService.js';
 import { discoverDestinationAttractions } from './destinationDiscoveryService.js';
+import { optimizeTripBudget } from './tripOptimizerService.js';
 
 export async function generateTripPlan(criteria = {}) {
   // 1. Resolve Locations (Origin & Destination)
@@ -49,120 +50,48 @@ export async function generateTripPlan(criteria = {}) {
   const infants = Math.max(0, Number(criteria.infants) || 0);
   const totalTravelers = adults + children; // infants generally don't incur seat/bed costs
 
-  // 4. Intercity Route & Transport Options
-  const routeData = calculateTransitOptions(origin, destination, totalTravelers, days);
-  const selectedTransport = selectPreferredTransport(
-    routeData,
-    criteria.intercityTransportPreference || criteria.transportPreference || 'Cheapest available'
-  );
-  const transportCost = selectedTransport.totalCost || (selectedTransport.costPerPerson * totalTravelers);
-
-  const stayData = calculateStayOptions({
+  // 4-9. Smart planning: the user gives constraints; the planner chooses
+  // intercity transit, accommodation, local transport and paid activities.
+  // Nothing below is exposed as a mandatory user selection.
+  const optimized = await optimizeTripBudget({
+    origin,
     destination,
-    travelers: totalTravelers,
+    totalTravelers,
     adults,
+    children,
+    days,
     nights,
-    accommodationPreference: criteria.accommodationPreference || 'Hotel',
+    rawUserBudget: criteria.userBudget !== undefined
+      ? Number(criteria.userBudget)
+      : (criteria.budget !== undefined ? Number(criteria.budget) : 15000),
+    budgetType: criteria.budgetType || 'person',
+    budgetFlexibility: criteria.budgetFlexibility || 'Strict',
     travelStyle: Array.isArray(criteria.travelStyle) ? criteria.travelStyle[0] : (criteria.travelStyle || 'Comfortable'),
-    roomsRequired: criteria.roomsRequired || null,
+    interests: Array.isArray(criteria.interests) ? criteria.interests : [],
+    specialRequirements: Array.isArray(criteria.specialRequirements) ? criteria.specialRequirements : [],
+    startDate,
+    endDate,
   });
+
+  const {
+    routeData,
+    selectedTransport,
+    stayData,
+    foodData,
+    localTransportData,
+    dayPlans,
+    budgetData,
+    liveAttractions,
+    optimization,
+  } = optimized;
+
+  const transportCost = selectedTransport.totalCost || (selectedTransport.costPerPerson * totalTravelers);
   const stayCost = stayData.totalCost;
-
-  // 6. Food & Meal Allowance Estimation
-  const foodData = calculateFoodBudget({
-    travelers: totalTravelers,
-    days,
-    travelStyle: Array.isArray(criteria.travelStyle) ? criteria.travelStyle[0] : (criteria.travelStyle || 'Comfortable'),
-    interests: Array.isArray(criteria.interests) ? criteria.interests : [],
-    requirements: Array.isArray(criteria.specialRequirements) ? criteria.specialRequirements : [],
-  });
   const foodCost = foodData.totalCost;
-
-  // 7. Local Transport Estimation
-  const localTransportData = calculateLocalTransportCost({
-    preference: criteria.localTransportPreference || 'Cab',
-    days,
-    travelers: totalTravelers,
-  });
   const localTransportCost = localTransportData.totalCost;
-
-  // 8. Live destination discovery: use real nearby landmarks for any destination,
-  // while retaining the curated database as a fallback when the external source is unavailable.
-  let liveAttractions = [];
-  try {
-    liveAttractions = await discoverDestinationAttractions(destination, Math.min(14, Math.max(8, days * 3)));
-  } catch {
-    liveAttractions = [];
-  }
-
-  // Use discovered landmarks as the activity source when available. This removes the
-  // old "Manali/Goa/etc." hard limit and prevents fabricated generic attractions.
-  let liveDayPlans = null;
-  if (liveAttractions.length > 0) {
-    const interestTerms = (Array.isArray(criteria.interests) ? criteria.interests : []).map((x) => String(x).toLowerCase());
-    const ranked = [...liveAttractions].sort((a, b) => {
-      const score = (item) => interestTerms.reduce((s, term) =>
-        s + (String(item.title).toLowerCase().includes(term) || String(item.desc).toLowerCase().includes(term) ? 2 : 0), 0);
-      return score(b) - score(a);
-    });
-
-    const usable = ranked.slice(0, Math.max(days * 3, 6));
-    const perDay = Math.max(1, Math.ceil(usable.length / days));
-    liveDayPlans = Array.from({ length: days }, (_, index) => {
-      const chunk = usable.slice(index * perDay, (index + 1) * perDay);
-      return {
-        day: index + 1,
-        neighborhood: destination.city,
-        activities: chunk.map((place) => ({
-          id: place.id,
-          title: place.title,
-          desc: place.desc,
-          category: 'Sightseeing',
-          neighborhood: destination.city,
-          durationHours: 1.5,
-          costPerPerson: 0,
-          image: place.image,
-          sourceUrl: place.url,
-          source: place.source,
-        })),
-      };
-    });
-  }
-
-  // 8. Clustered Activities & Entry Fees Estimation
-  const generatedDayPlans = planActivitiesForTrip({
-    destination,
-    days,
-    interests: Array.isArray(criteria.interests) ? criteria.interests : [],
-    intensity: criteria.activityIntensity || 'Balanced',
-  });
-  const dayPlans = liveDayPlans || generatedDayPlans;
-
-  const totalActivityFeePerPerson = dayPlans.reduce((sum, d) => {
-    return sum + (d.activities || []).reduce((s, a) => s + (Number(a.costPerPerson) || 0), 0);
-  }, 0);
-  const activitiesCost = totalActivityFeePerPerson * totalTravelers;
-
-  // 9. Budget Calculation, 7-Category Breakdown, and Shortfall Detection
-  // User Budget: Ensure we preserve user original input budget and NOT any previous calculated total
-  const rawUserBudget = criteria.userBudget !== undefined
-    ? Number(criteria.userBudget)
-    : (criteria.budget !== undefined ? Number(criteria.budget) : 15000);
-
-  const budgetType = criteria.budgetType || 'person'; // 'person' | 'total'
-  const budgetFlexibility = criteria.budgetFlexibility || 'Moderate'; // 'Strict' | 'Moderate' | 'Flexible'
-
-  const budgetData = buildCompleteBudget({
-    transportCost,
-    stayCost,
-    foodCost,
-    localTransportCost,
-    activitiesCost,
-    travelers: totalTravelers,
-    userBudget: rawUserBudget,
-    budgetType,
-    budgetFlexibility,
-  });
+  const activitiesCost = dayPlans.reduce((sum, d) =>
+    sum + (d.activities || []).reduce((s, a) => s + (Number(a.costPerPerson) || 0), 0), 0
+  ) * totalTravelers;
 
   // 10. Weather Forecast Estimation
   let travelMonth = new Date().getMonth() + 1;
@@ -224,6 +153,7 @@ export async function generateTripPlan(criteria = {}) {
     budgetFlexibility: budgetData.budgetFlexibility,
     budgetStatus: budgetData.isOverBudget ? 'over_budget' : 'within_budget',
     isOverBudget: budgetData.isOverBudget,
+    optimization,
     shortfall: {
       total: budgetData.shortfallTotal,
       perPerson: budgetData.shortfallPerPerson,
@@ -322,10 +252,10 @@ export async function generateTripPlan(criteria = {}) {
       budgetType,
       budgetFlexibility,
       travelStyle: criteria.travelStyle,
-      accommodationPreference: criteria.accommodationPreference || 'Hotel',
-      roomsRequired: criteria.roomsRequired || null,
-      intercityTransportPreference: criteria.intercityTransportPreference || 'Cheapest available',
-      localTransportPreference: criteria.localTransportPreference || 'Cab',
+      accommodationPreference: 'Smart-selected within budget',
+      roomsRequired: stayData.roomsRequired || null,
+      intercityTransportPreference: 'Smart-selected within budget',
+      localTransportPreference: 'Smart-selected within budget',
       interests: criteria.interests || [],
       activityIntensity: criteria.activityIntensity || 'Balanced',
       specialRequirements: criteria.specialRequirements || [],
