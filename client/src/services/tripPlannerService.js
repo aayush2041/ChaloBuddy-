@@ -50,6 +50,10 @@ export async function generateTripPlan(criteria = {}) {
   const infants = Math.max(0, Number(criteria.infants) || 0);
   const totalTravelers = adults + children; // infants generally don't incur seat/bed costs
 
+  const rawUserBudget = criteria.userBudget !== undefined
+    ? Number(criteria.userBudget)
+    : (criteria.budget !== undefined ? Number(criteria.budget) : 15000);
+
   // 4-9. Smart planning: the user gives constraints; the planner chooses
   // intercity transit, accommodation, local transport and paid activities.
   // Nothing below is exposed as a mandatory user selection.
@@ -61,9 +65,7 @@ export async function generateTripPlan(criteria = {}) {
     children,
     days,
     nights,
-    rawUserBudget: criteria.userBudget !== undefined
-      ? Number(criteria.userBudget)
-      : (criteria.budget !== undefined ? Number(criteria.budget) : 15000),
+    rawUserBudget,
     budgetType: criteria.budgetType || 'person',
     budgetFlexibility: criteria.budgetFlexibility || 'Strict',
     travelStyle: Array.isArray(criteria.travelStyle) ? criteria.travelStyle[0] : (criteria.travelStyle || 'Comfortable'),
