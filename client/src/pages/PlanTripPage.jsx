@@ -29,7 +29,7 @@ const QUESTIONS = [
   { id: 2, title: 'When Are You Travelling?', subtitle: 'Dates and duration' },
   { id: 3, title: 'Who Is Joining?', subtitle: 'Travelers and party size' },
   { id: 4, title: 'What Is Your Budget?', subtitle: 'Spending limit and flexibility' },
-  { id: 5, title: 'Style & Accommodation', subtitle: 'Vibe, stay tier and transport' },
+  { id: 5, title: 'Your Travel Style', subtitle: 'Vibe, interests and requirements' },
 ];
 
 const TRAVEL_STYLES = [
@@ -107,9 +107,9 @@ export default function PlanTripPage() {
 
   // Q5: Style, Stay & Transit
   const [travelStyle, setTravelStyle] = useState('Comfortable');
-  const [accommodationPreference, setAccommodationPreference] = useState('Hotel');
-  const [intercityTransport, setIntercityTransport] = useState('Cheapest available');
-  const [localTransport, setLocalTransport] = useState('Mixed');
+  const [accommodationPreference] = useState('Smart-selected');
+  const [intercityTransport] = useState('Smart-selected');
+  const [localTransport] = useState('Smart-selected');
   const [interests, setInterests] = useState(['Sightseeing', 'Nature', 'Food & Cafes']);
   const [specialRequirements, setSpecialRequirements] = useState([]);
 
@@ -181,10 +181,10 @@ export default function PlanTripPage() {
       budgetType,
       budgetFlexibility,
       travelStyle: [travelStyle],
-      accommodationPreference,
-      roomsRequired: recommendedRooms,
-      intercityTransportPreference: intercityTransport,
-      localTransportPreference: localTransport,
+      accommodationPreference: 'Smart-selected',
+      roomsRequired: null,
+      intercityTransportPreference: 'Smart-selected',
+      localTransportPreference: 'Smart-selected',
       interests,
       activityIntensity: travelStyle === 'Relaxed' ? 'Relaxed' : travelStyle === 'Adventure' ? 'Packed' : 'Balanced',
       specialRequirements,
@@ -592,9 +592,9 @@ export default function PlanTripPage() {
             <div className="space-y-6 animate-fade-in">
               <div className="space-y-1">
                 <span className="text-xs font-bold text-[#FF5A1F] uppercase tracking-wider">Question 5 of 5 • Final Step</span>
-                <h2 className="text-2xl font-black text-[#071A2B]">What travel vibe and stays do you prefer?</h2>
+                <h2 className="text-2xl font-black text-[#071A2B]">What kind of trip do you want?</h2>
                 <p className="text-xs text-slate-500">
-                  Select your travel vibe, stay category, and preferred intercity transit.
+                  Tell us your travel style and interests. Smart Planner handles the transport and stay choices automatically.
                 </p>
               </div>
 
@@ -620,106 +620,56 @@ export default function PlanTripPage() {
                 </div>
               </div>
 
-              {/* Accommodation Tier */}
-              <div className="space-y-2 pt-2 border-t border-slate-100">
-                <label className="text-xs font-bold text-slate-700 block">ACCOMMODATION TIER</label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                  {ACCOMMODATIONS.map((acc) => (
-                    <button
-                      key={acc.id}
-                      type="button"
-                      onClick={() => setAccommodationPreference(acc.id)}
-                      className={`p-3 rounded-2xl border text-left transition-all cursor-pointer space-y-0.5 ${
-                        accommodationPreference === acc.id
-                          ? 'bg-orange-50/50 border-[#FF5A1F] ring-1 ring-[#FF5A1F]'
-                          : 'bg-slate-50 border-slate-200 hover:border-slate-300'
-                      }`}
-                    >
-                      <span className="font-bold text-xs text-[#071A2B] block truncate">{acc.label}</span>
-                      <span className="text-[10px] font-bold text-[#FF5A1F] bg-orange-100 px-1.5 py-0.5 rounded inline-block">
-                        {acc.est}
-                      </span>
+              {/* Smart planning explanation */}
+              <div className="p-5 rounded-2xl bg-gradient-to-br from-orange-50 to-white border border-orange-200">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-[#FF5A1F] text-white flex items-center justify-center shrink-0"><Sparkles className="w-5 h-5" /></div>
+                  <div>
+                    <h3 className="font-black text-[#071A2B]">We'll choose the trip for you</h3>
+                    <p className="text-xs text-slate-500 mt-1 leading-relaxed">You don't need to choose trains, buses, cabs, hotels or stay tiers. Smart Planner compares practical options and builds the complete trip around your budget, dates, group size and interests.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-700 block">TRAVEL STYLE</label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  {TRAVEL_STYLES.map((st) => (
+                    <button key={st.id} type="button" onClick={() => setTravelStyle(st.id)}
+                      className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex items-center gap-2 ${travelStyle === st.id ? 'bg-orange-50/50 border-[#FF5A1F] ring-1 ring-[#FF5A1F]' : 'bg-slate-50 border-slate-200 hover:border-slate-300'}`}>
+                      <span className="text-base">{st.icon}</span><span className="font-bold text-xs text-[#071A2B]">{st.label}</span>
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* Local Transport Preference */}
-              <div className="space-y-2 pt-2 border-t border-slate-100">
-                <label className="text-xs font-bold text-slate-700 block">GETTING AROUND LOCALLY</label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {['Mixed', 'Public Transport', 'Cab', 'Rental Car'].map((mode) => (
-                    <button
-                      key={mode}
-                      type="button"
-                      onClick={() => setLocalTransport(mode)}
-                      className={`p-3 rounded-2xl border text-xs font-bold transition-all cursor-pointer ${localTransport === mode ? 'bg-orange-50 border-[#FF5A1F] text-[#FF5A1F] ring-1 ring-[#FF5A1F]' : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300'}`}
-                    >
-                      {mode}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Interests & Preferences */}
               <div className="space-y-2 pt-2 border-t border-slate-100">
                 <label className="text-xs font-bold text-slate-700 block">WHAT DO YOU LIKE?</label>
                 <div className="flex flex-wrap gap-2">
                   {['Nature', 'Adventure', 'Culture', 'History', 'Food & Cafes', 'Beaches', 'Nightlife', 'Shopping', 'Photography', 'Spiritual'].map((interest) => {
                     const active = interests.includes(interest);
-                    return (
-                      <button
-                        key={interest}
-                        type="button"
-                        onClick={() => setInterests((prev) => active ? prev.filter((x) => x !== interest) : [...prev, interest])}
-                        className={`px-3 py-2 rounded-full text-xs font-bold border transition-all cursor-pointer ${active ? 'bg-[#FF5A1F] text-white border-[#FF5A1F]' : 'bg-white text-slate-600 border-slate-200 hover:border-[#FF5A1F]'}`}
-                      >
-                        {interest}
-                      </button>
-                    );
+                    return <button key={interest} type="button" onClick={() => setInterests((prev) => active ? prev.filter((x) => x !== interest) : [...prev, interest])}
+                      className={`px-3 py-2 rounded-full text-xs font-bold border transition-all cursor-pointer ${active ? 'bg-[#FF5A1F] text-white border-[#FF5A1F]' : 'bg-white text-slate-600 border-slate-200 hover:border-[#FF5A1F]'}`}>{interest}</button>;
                   })}
                 </div>
-                <p className="text-[10px] text-slate-400">These preferences influence activity selection and itinerary pacing.</p>
+                <p className="text-[10px] text-slate-400">These preferences guide activity selection and trip pacing.</p>
               </div>
 
-              {/* Special Requirements */}
               <div className="space-y-2 pt-2 border-t border-slate-100">
                 <label className="text-xs font-bold text-slate-700 block">SPECIAL REQUIREMENTS</label>
                 <div className="flex flex-wrap gap-2">
                   {['Vegetarian food', 'Senior-friendly', 'Child-friendly', 'Avoid long hikes', 'Accessibility needs'].map((item) => {
                     const active = specialRequirements.includes(item);
-                    return (
-                      <button
-                        key={item}
-                        type="button"
-                        onClick={() => setSpecialRequirements((prev) => active ? prev.filter((x) => x !== item) : [...prev, item])}
-                        className={`px-3 py-2 rounded-full text-xs font-bold border transition-all cursor-pointer ${active ? 'bg-orange-50 text-[#FF5A1F] border-[#FF5A1F]' : 'bg-white text-slate-600 border-slate-200 hover:border-[#FF5A1F]'}`}
-                      >
-                        {item}
-                      </button>
-                    );
+                    return <button key={item} type="button" onClick={() => setSpecialRequirements((prev) => active ? prev.filter((x) => x !== item) : [...prev, item])}
+                      className={`px-3 py-2 rounded-full text-xs font-bold border transition-all cursor-pointer ${active ? 'bg-orange-50 text-[#FF5A1F] border-[#FF5A1F]' : 'bg-white text-slate-600 border-slate-200 hover:border-[#FF5A1F]'}`}>{item}</button>;
                   })}
                 </div>
               </div>
 
-              {/* Transport Preference */}
-              <div className="space-y-2 pt-2 border-t border-slate-100">
-                <label className="text-xs font-bold text-slate-700 block">INTERCITY TRANSIT PREFERENCE</label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                  {TRANSPORTS.map((tr) => (
-                    <button
-                      key={tr.id}
-                      type="button"
-                      onClick={() => setIntercityTransport(tr.id)}
-                      className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
-                        intercityTransport === tr.id
-                          ? 'bg-orange-50/50 border-[#FF5A1F] ring-1 ring-[#FF5A1F]'
-                          : 'bg-slate-50 border-slate-200 hover:border-slate-300'
-                      }`}
-                    >
-                      <span className="font-bold text-xs text-[#071A2B] block truncate">{tr.label}</span>
-                    </button>
-                  ))}
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 text-xs">
+                <div className="font-bold text-[#071A2B]">Smart Planner will automatically optimize:</div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3 text-slate-600">
+                  <span>🚆 Intercity transit</span><span>🏨 Accommodation</span><span>🚕 Local transport</span><span>💰 Activities & budget</span>
                 </div>
               </div>
 
