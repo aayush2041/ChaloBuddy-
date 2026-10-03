@@ -1,144 +1,147 @@
-# ValorVault — Digital Gaming & Creator Marketplace
+# ChaloBuddy — Travel Better • Plan Smarter 🌍✈️
 
-[![Status](https://img.shields.io/badge/status-active-emerald.svg)](http://localhost:5173)
-[![Platform](https://img.shields.io/badge/platform-Web%20App-cyan.svg)](http://localhost:5000)
-[![Tech Stack](https://img.shields.io/badge/stack-React%20%7C%20Node.js%20%7C%20SQLite%20%7C%20TailwindCSS-rose.svg)](http://localhost:5173)
+[![Platform](https://img.shields.io/badge/platform-Web%20%7C%20Mobile%20Responsive-orange.svg)](#)
+[![Tech Stack](https://img.shields.io/badge/stack-React%2019%20%7C%20TailwindCSS%204%20%7C%20Vite-blue.svg)](#)
+[![Deployment](https://img.shields.io/badge/deploy-Vercel%20Ready-black.svg)](#)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](#)
 
-**ValorVault** is a specialized peer-verified digital marketplace for high-tier gaming accounts, in-game currency vouchers, and digital creator assets (Valorant, BGMI, PUBG Mobile, Free Fire, YouTube channels, and more).
-
-Unlike standard e-commerce stores, **ValorVault eliminates credit card chargeback fraud and payment gateway failures by implementing an Indian UPI and Direct Bank Transfer manual escrow verification system**. Customers place an order, transfer the exact amount, submit their 12-digit UTR and payment screenshot, and receive sensitive digital credentials inside an authenticated Digital Vault only after an administrator independently validates the transaction in the bank ledger.
-
----
-
-## 🚀 Live Servers & Quick Access
-
-- **Vite Interactive Client**: [http://localhost:5173](http://localhost:5173)
-- **Unified Express Backend & API**: [http://localhost:5000](http://localhost:5000)
-- **Interactive Role Switcher**: Available directly in the top banner to toggle between **Customer View (Aayush Sharma)** and **Admin Portal (Master Admin)** with 1-click.
-
-### Security & Authentication
-
-Admin access is restricted to authorized credentials set in environment variables (`ADMIN_EMAIL` and `ADMIN_PASSWORD`) or configured in the Admin Portal.
+**ChaloBuddy** is a modern travel community and smart trip-planning platform. It combines realistic, input-driven AI trip planning, handpicked verified homestays and hotels, a vibrant community of solo & group travel buddies, verified host listings, and interactive messaging into one seamless experience.
 
 ---
 
-## 🎮 Main Marketplace Categories
+## 🌟 Key Features
 
-1. **Valorant**: Radiant / Immortal stacked accounts, smurfs, Kuronami & Champions bundles, 5,350+ VP official prepaid voucher cards.
-2. **BGMI**: Glacier M416 Max Level 7 accounts, Poseidon X-Suits, Conqueror titles, 4,450 UC direct character ID top-up.
-3. **PUBG Mobile**: Global version accounts, Blood Raven X-Suit 5-Star, Godzilla AWM, Royale Pass packs.
-4. **Free Fire**: Max Level 7 Evo Guns, Season 1 Sakura and Season 2 Hip Hop bundles, Diamond vouchers.
-5. **YouTube Assets**: 124K & 45K subscriber monetized gaming channels (active YPP, AdSense ready, clean strike records).
-6. **Other Games & Social**: Steam keys, GTA V modded accounts, Discord Nitro, and social creator handles.
+### 🧠 Realistic Smart Trip Planner
+- **Real-Time Location Autocomplete**: Structured geocoding (`name`, `city`, `state`, `country`, `latitude`, `longitude`) for origins and destinations.
+- **Input-Driven Cost Estimation**: Real transit routes, distances, transport options (Flights, Trains, Cabs/Buses), verified stays, dining, and activity costs calculated from traveler counts and dates.
+- **Dynamic Day-by-Day Itineraries**: Contextual morning, afternoon, and evening activities with local food recommendations and travel constraints.
+- **Live Budget Tuning**: Interactive budget slider with instant per-person and total cost breakdowns in ₹ INR, $ USD, or € EUR.
+
+### 🏡 Handpicked Stays & Boutiques
+- Curated boutique stays, hill-view chalets, beach villas, and backpacker hostels across top Indian and international destinations (Manali, Goa, Rishikesh, Jaipur, Kerala, Ladakh, etc.).
+- Filter by budget, guest count, location, and amenities.
+- High-res photo galleries, video tours, verified host badges, and instant reservation modal.
+
+### 👥 Travel Buddies & Community Trips
+- Discover verified travelers and groups heading to the same destinations.
+- Filter companions by travel style (Backpacker, Luxury, Trekker, Culture Explorer).
+- Host and publish custom trip itineraries or join existing community journeys.
+
+### 💬 Responsive Real-Time Messaging & Chat
+- **Mobile Full-Screen Drill-Down**: Clean conversation list that transitions seamlessly into a full-screen chat with back button navigation and docked composer.
+- **Desktop Two-Column Panel**: Persistent sidebar with active chat stream, photo attachments, and direct "Trip Details" navigation.
+- Safe message bubbles with auto-wrapping and auto-scroll to latest updates.
+
+### 📱 Mobile-First Responsive Design
+- Optimized across narrow mobile screens (320px, 360px, 375px, 390px, 414px, 430px) up to ultra-wide displays (1440px+).
+- Compact mobile header containing only brand logo, search, notifications, and hamburger menu.
+- Full slide-down drawer menu with quick profile access, all navigation links, and currency switcher.
+- Fixed bottom navigation bar for quick thumb navigation.
+- Zero horizontal overflow across all pages.
+
+### 💱 Multi-Currency Support
+- Instant conversion across **₹ INR (Indian Rupee)**, **$ USD (US Dollar)**, and **€ EUR (Euro)**.
 
 ---
 
-## 🔄 The Complete Customer & Admin Workflow
+## 🚀 Tech Stack
 
-```mermaid
-flowchart TD
-    A[Customer: Browse Categories] --> B[View Product Page & Specs]
-    B --> C[Add to Cart / Buy Now]
-    C --> D[Checkout: Enter Customer Details & Apply Coupon]
-    D --> E[Order Created: Status PENDING_PAYMENT]
-    E --> F[Payment Page: Dynamic UPI QR & Bank Settlement Details]
-    F --> G[Customer Pays exact amount via UPI or Bank IMPS]
-    G --> H[Customer Submits 12-Digit UTR + Payment Screenshot]
-    H --> I[Order Status: PAYMENT_SUBMITTED]
-    I --> J{Admin Verification Queue}
-    J -->|UTR Verified in Bank Statement| K[Action: CONFIRM]
-    J -->|Invalid UTR or Blurred Screenshot| L[Action: REJECT with Reason]
-    J -->|Bank Query Pending| M[Action: REQUEST_INFO]
-    L --> N[Order Status: PAYMENT_REJECTED / Customer Resubmits Details]
-    N --> H
-    K --> O[Automated Vault Fulfillment & Inventory Decrement]
-    O --> P[Order Status: DELIVERED]
-    P --> Q[Customer Vault: Masked Credentials Revealed with Eye Toggle]
-    Q --> R[Customer Confirms & Acknowledges: Status COMPLETED]
+- **Frontend Framework**: [React 19](https://react.dev/)
+- **Build Tool**: [Vite 8](https://vitejs.dev/)
+- **Styling**: [Tailwind CSS 4](https://tailwindcss.com/)
+- **Icons**: [Lucide React](https://lucide.dev/)
+- **Visuals & Effects**: Canvas Confetti, QR Code Generator
+- **Routing**: Client-side SPA with hash-based deep linking
+- **State Management**: React Context API (`StoreContext`)
+
+---
+
+## 📁 Project Structure
+
+```
+ChaloBuddy/
+├── client/
+│   ├── public/              # Static assets & icons
+│   ├── src/
+│   │   ├── components/      # Modular UI components (Navbar, Modals, Cards, Autocomplete)
+│   │   ├── context/         # StoreContext (global state, mock data, users, currency)
+│   │   ├── data/            # Seed data, destinations catalogue & planner engine
+│   │   ├── pages/           # Page views (Home, Trips, Planner, Stays, Buddies, Messages)
+│   │   ├── services/        # Logic services (budgetService, routeService, stayService)
+│   │   ├── App.jsx          # Route dispatcher & layout root
+│   │   ├── main.jsx         # App bootstrap & ErrorBoundary
+│   │   └── style.css        # Tailwind styles & theme variables
+│   ├── package.json
+│   ├── vercel.json          # Client-level SPA rewrites
+│   └── vite.config.js       # Vite build configuration
+├── DEPLOYMENT.md            # Production deployment guide
+├── vercel.json              # Root-level Vercel configuration
+└── README.md
 ```
 
 ---
 
-## 🛡️ Order State Machine
+## 🛠️ Getting Started
 
-The order lifecycle adheres strictly to the specification:
+### Prerequisites
+- [Node.js](https://nodejs.org/) (v18 or higher)
+- npm or yarn
 
-- `PENDING_PAYMENT`: Order generated; waiting for customer payment.
-- `PAYMENT_SUBMITTED`: UTR reference and screenshot uploaded.
-- `PAYMENT_UNDER_REVIEW`: Flagged for manual bank inquiry.
-- `PAYMENT_CONFIRMED`: Admin independently matched the UTR in bank records.
-- `PROCESSING`: Preparing delivery payload.
-- `READY_FOR_DELIVERY`: Vault item staged.
-- `DELIVERED`: Credentials unlocked in authenticated customer vault.
-- `COMPLETED`: Customer confirmed full access.
-- `PAYMENT_REJECTED`: Rejection reason published; customer can resubmit without losing order.
-- `RESUBMISSION`: Corrected UTR/screenshot re-evaluated with full history preserved.
-- `REFUND_REQUESTED`: Customer submitted refund ticket.
-- `REFUNDED`: Admin approved refund.
-- `DISPUTED`: In review with customer desk.
+### Installation
 
----
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/aayush2041/ChaloBuddy-.git
+   cd ChaloBuddy-
+   ```
 
-## 📦 Key System Features
+2. **Install dependencies**:
+   ```bash
+   cd client
+   npm install
+   ```
 
-### 1. Customer Storefront
-- **Responsive Dark Cyberpunk UI**: Built with Valorant crimson (`#ff4655`), electric cyan (`#00f5d4`), and glassmorphism.
-- **Dynamic Search & Filtering**: Multi-criteria filters by Category, Delivery Method, Rank/MMR, Price Range, In-Stock, and Hot Deals.
-- **Product Card Security**: Public cards display specifications, pricing, and availability **without exposing sensitive credentials**.
-- **Comprehensive Product Page**: Image gallery, detailed specifications, "What's Included", Delivery information, Terms, Refund Policy, and Verified Customer Reviews.
-- **Coupon Engine**: Validates codes (e.g., `VALOR10` for 10% off, `VAULT500` for ₹500 off, `FIRST50`), minimum order values, and category restrictions.
+3. **Start the development server**:
+   ```bash
+   npm run dev
+   ```
+   Open [http://localhost:5173](http://localhost:5173) in your browser.
 
-### 2. Manual Payment Gateway
-- **Dynamic UPI QR Code**: Uses `qrcode.react` to generate standardized `upi://pay?pa=...&pn=...&am=...&cu=INR` QR codes matching the exact order total.
-- **One-Click Copy Buttons**: Instant clipboard copying with feedback for UPI ID (`valorvault@okaxis`), Bank Account Number, IFSC, and Payee Name.
-- **Proof Submission**: Validates 12-digit UTR and allows drag-and-drop screenshot uploads with instant local preview.
-
-### 3. Admin Command Center
-- **Payment Verification Queue**: Lists orders awaiting reconciliation with customer name, phone, expected amount, UTR, and click-to-zoom screenshot inspector.
-- **One-Click Verification**: 
-  - `Confirm Payment` automatically binds an unallocated asset from `inventory_vault`, sets status to `DELIVERED`, and decrements catalog stock.
-  - `Reject Payment` triggers a modal requiring a rejection reason that notifies the customer.
-- **Deliveries Management & Manual Override**: Allows admin to input custom account credentials or fulfillment references.
-- **Products & Inventory Vault**: Full CRUD for catalog items and secure vault allocations.
-- **Coupon Management**: Create percentage or flat discounts with usage limits and expiry dates.
-- **Support Helpdesk**: Filter customer tickets by issue type (`payment_problem`, `delivery_issue`, `account_issue`, `refund_request`, etc.) and send official admin replies.
-- **Payment Configuration Settings**: Edit UPI VPA, Bank Account details, and Notice banners in real time.
-- **Immutable Security Audit Trail**: Logs timestamp, actor, role, entity, and action for every sensitive payment, delivery, and refund transition.
+4. **Build for production**:
+   ```bash
+   npm run build
+   ```
 
 ---
 
-## 🗄️ Database Structure (`server/valorvault.db`)
+## 🌐 Deployment on Vercel
 
-SQLite database with WAL mode and foreign key integrity:
-- `users`: `id`, `name`, `email`, `phone`, `role`, `password`, `avatar`, `created_at`
-- `categories`: `id`, `name`, `slug`, `icon`, `description`, `badge`, `display_order`
-- `products`: `id`, `category_id`, `name`, `slug`, `price`, `original_price`, `stock`, `delivery_type`, `images`, `specs`, `whats_included`, `terms`, `refund_policy`, `status`
-- `inventory_vault`: `id`, `product_id`, `item_type`, `secret_data`, `is_allocated`, `allocated_to_order_id`, `allocated_at`
-- `orders`: `id`, `order_number`, `user_id`, `customer_name`, `customer_email`, `customer_phone`, `total_amount`, `status`, `payment_status`, `payment_method`, `rejection_reason`
-- `order_items`: `id`, `order_id`, `product_id`, `product_name`, `price`, `quantity`, `delivery_type`, `specs_snapshot`
-- `payments`: `id`, `order_id`, `method`, `amount`, `utr`, `screenshot_url`, `status`, `rejection_reason`, `verified_by`, `verified_at`
-- `payment_attempts`: `id`, `order_id`, `attempt_number`, `method`, `amount`, `utr`, `screenshot_url`, `status`, `rejection_reason`
-- `deliveries`: `id`, `order_id`, `delivery_type`, `delivery_data`, `status`, `delivered_at`, `delivered_by`, `customer_acknowledged_at`
-- `support_tickets`: `id`, `ticket_number`, `user_id`, `customer_name`, `customer_email`, `order_id`, `issue_type`, `subject`, `message`, `status`, `admin_reply`
-- `coupons`: `id`, `code`, `discount_type`, `discount_value`, `min_order_value`, `max_uses`, `uses_count`, `expiry_date`, `is_active`
-- `reviews`: `id`, `product_id`, `customer_name`, `rating`, `comment`, `verified_purchase`
-- `audit_logs`: `id`, `entity_type`, `entity_id`, `action`, `actor_name`, `actor_role`, `details`, `created_at`
-- `settings`: `key`, `value`, `description`, `updated_at`
+ChaloBuddy is configured for zero-config SPA deployment on [Vercel](https://vercel.com):
+
+1. Push your changes to GitHub.
+2. Import the repository `ChaloBuddy-` on Vercel.
+3. Configure project settings:
+   - **Framework Preset**: Vite
+   - **Root Directory**: `client`
+   - **Build Command**: `npm run build`
+   - **Output Directory**: `dist`
+4. Click **Deploy**.
+
+SPA routing is handled automatically by the included `vercel.json` rewrites.
 
 ---
 
-## 🛠️ Project Execution & Commands
+## 🎨 Brand Guidelines & Palette
 
-```bash
-# Start backend server
-node server/server.js
+| Token | Hex Code | Usage |
+| :--- | :--- | :--- |
+| **Deep Navy** | `#071A2B` | Header, dark surfaces, high-contrast headings |
+| **Accent Orange** | `#FF5A1F` | CTAs, active states, brand badges, highlights |
+| **Soft Background** | `#F5F7F8` | Global page background |
+| **Pure White** | `#FFFFFF` | Cards, modals, containers |
 
-# Start frontend dev server
-npm --prefix client run dev
+---
 
-# Or run both concurrently
-npm run dev
+## 📄 License
 
-# Run automated end-to-end integration test
-node test-workflow.js
-```
+This project is licensed under the MIT License.

@@ -32,9 +32,7 @@ lerna-debug.log*
 # Database & Uploads for local development (optional)
 *.db-shm
 *.db-wal
-# server/database.sqlite
-# server/uploads/*
-!server/uploads/.gitkeep
+server/
 
 # Temporary / Scratch Files
 scratch/
