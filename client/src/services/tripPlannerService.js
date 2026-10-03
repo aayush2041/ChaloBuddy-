@@ -53,6 +53,8 @@ export async function generateTripPlan(criteria = {}) {
   const rawUserBudget = criteria.userBudget !== undefined
     ? Number(criteria.userBudget)
     : (criteria.budget !== undefined ? Number(criteria.budget) : 15000);
+  const budgetType = criteria.budgetType || 'person';
+  const budgetFlexibility = criteria.budgetFlexibility || 'Strict';
 
   // 4-9. Smart planning: the user gives constraints; the planner chooses
   // intercity transit, accommodation, local transport and paid activities.
@@ -66,8 +68,8 @@ export async function generateTripPlan(criteria = {}) {
     days,
     nights,
     rawUserBudget,
-    budgetType: criteria.budgetType || 'person',
-    budgetFlexibility: criteria.budgetFlexibility || 'Strict',
+    budgetType,
+    budgetFlexibility,
     travelStyle: Array.isArray(criteria.travelStyle) ? criteria.travelStyle[0] : (criteria.travelStyle || 'Comfortable'),
     interests: Array.isArray(criteria.interests) ? criteria.interests : [],
     specialRequirements: Array.isArray(criteria.specialRequirements) ? criteria.specialRequirements : [],
