@@ -66,13 +66,20 @@ export async function optimizeTripBudget({
   budgetFlexibility,
   travelStyle,
   interests,
-  specialRequirements,
+  specialRequirements = [],
 }) {
   const target = normalizeBudget(rawUserBudget, budgetType, totalTravelers);
+  if (!origin?.city || !destination?.city || !Number.isFinite(Number(origin?.lat)) || !Number.isFinite(Number(origin?.lng)) || !Number.isFinite(Number(destination?.lat)) || !Number.isFinite(Number(destination?.lng))) {
+    throw new Error('Please select valid starting and destination locations from the search suggestions.');
+  }
+
   const routeData = calculateTransitOptions(origin, destination, totalTravelers, days);
 
   // Candidate transport modes. We never ask the user to pick one.
-  const transports = routeData.options.filter(Boolean);
+  const transports = Array.isArray(routeData?.options) ? routeData.options.filter(Boolean) : [];
+  if (!transports.length) {
+    throw new Error('No intercity transport options could be calculated for these locations.');
+  }
 
   // Candidate stays, ordered from economical to premium. The optimizer decides.
   const stayTypes = ['Hostel', 'Budget Hotel', 'Homestay', 'Hotel', 'Resort', 'Premium'];
@@ -95,7 +102,9 @@ export async function optimizeTripBudget({
     liveAttractions = [];
   }
 
-  const interestTerms = interests.map((x) => String(x).toLowerCase());
+  const safeInterests = Array.isArray(interests) ? interests : [];
+  const safeRequirements = Array.isArray(specialRequirements) ? specialRequirements : [];
+  const interestTerms = safeInterests.map((x) => String(x).toLowerCase());
   const ranked = [...liveAttractions].sort((a, b) => {
     const score = (item) => interestTerms.reduce((sum, term) => {
       const hay = `${item.title} ${item.desc}`.toLowerCase();
@@ -107,7 +116,7 @@ export async function optimizeTripBudget({
   const fallbackPlans = planActivitiesForTrip({
     destination,
     days,
-    interests,
+    interests: safeInterests,
     intensity: travelStyle === 'Relaxed' ? 'Relaxed' : travelStyle === 'Adventure' ? 'Packed' : 'Balanced',
   });
 
@@ -146,8 +155,8 @@ export async function optimizeTripBudget({
     travelers: totalTravelers,
     days,
     travelStyle,
-    interests,
-    requirements: specialRequirements,
+    interests: safeInterests,
+    requirements: safeRequirements,
   });
 
   const candidates = [];
@@ -188,6 +197,10 @@ export async function optimizeTripBudget({
   const feasible = candidates.filter((c) => c.underBudget);
   let selected;
   let feasiblePlan = true;
+
+  if (!candidates.length) {
+    throw new Error('The planner could not create any feasible transport, stay and local travel combinations.');
+  }
 
   if (feasible.length) {
     selected = [...feasible].sort((a, b) => b.score - a.score || a.estimatedTotal - b.estimatedTotal)[0];
