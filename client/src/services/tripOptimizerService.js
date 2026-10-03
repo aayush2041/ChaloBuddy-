@@ -69,7 +69,8 @@ export async function optimizeTripBudget({
   specialRequirements = [],
 }) {
   const target = normalizeBudget(rawUserBudget, budgetType, totalTravelers);
-  if (!origin?.city || !destination?.city || !Number.isFinite(Number(origin?.lat)) || !Number.isFinite(Number(origin?.lng)) || !Number.isFinite(Number(destination?.lat)) || !Number.isFinite(Number(destination?.lng))) {
+  const validCoordinate = (value) => value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value));
+  if (!origin?.city || !destination?.city || !validCoordinate(origin?.lat) || !validCoordinate(origin?.lng) || !validCoordinate(destination?.lat) || !validCoordinate(destination?.lng)) {
     throw new Error('Please select valid starting and destination locations from the search suggestions.');
   }
 
