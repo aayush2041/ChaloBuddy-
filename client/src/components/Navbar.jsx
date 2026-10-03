@@ -99,7 +99,7 @@ export default function Navbar() {
             </button>
 
             {/* Desktop Navigation Links */}
-            <nav className="hidden lg:flex items-center gap-4 xl:gap-5 text-[13px] xl:text-sm font-medium">
+            <nav className="hidden lg:flex items-center gap-4 xl:gap-5 text-[13px] xl:text-sm font-medium whitespace-nowrap">
               <button
                 onClick={() => handleNavClick('home')}
                 className={`transition-colors cursor-pointer py-1 relative ${
@@ -113,22 +113,22 @@ export default function Navbar() {
               </button>
               <button
                 onClick={() => handleNavClick('trips')}
-                className={`transition-colors cursor-pointer py-1 relative ${
+                className={`inline-flex items-center justify-center transition-colors cursor-pointer py-1 relative min-h-[38px] ${
                   currentRoute.page === 'trips' ? 'text-[#FF5A1F] font-bold' : 'text-slate-200 hover:text-white'
                 }`}
               >
-                <span>Find a Trip</span>
+                <span className="w-[48px] text-center leading-[1.15]">Find a<br />Trip</span>
                 {currentRoute.page === 'trips' && (
                   <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-[#FF5A1F] rounded-full" />
                 )}
               </button>
               <button
                 onClick={() => handleNavClick('list-trip')}
-                className={`flex items-center gap-1.5 transition-colors cursor-pointer py-1 relative ${
+                className={`flex items-center justify-center gap-1.5 transition-colors cursor-pointer py-1 relative min-h-[38px] ${
                   currentRoute.page === 'list-trip' ? 'text-[#FF5A1F] font-bold' : 'text-slate-200 hover:text-white'
                 }`}
               >
-                <span>List a Trip</span>
+                <span className="w-[48px] text-center leading-[1.15]">List a<br />Trip</span>
                 <span className="text-[10px] bg-[#FF5A1F] text-white px-1.5 py-0.2 rounded-full font-bold">Host</span>
                 {currentRoute.page === 'list-trip' && (
                   <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-[#FF5A1F] rounded-full" />
@@ -136,23 +136,23 @@ export default function Navbar() {
               </button>
               <button
                 onClick={() => handleNavClick('stays')}
-                className={`transition-colors cursor-pointer py-1 relative ${
+                className={`inline-flex items-center justify-center transition-colors cursor-pointer py-1 relative min-h-[38px] ${
                   currentRoute.page === 'stays' ? 'text-[#FF5A1F] font-bold' : 'text-slate-200 hover:text-white'
                 }`}
               >
-                <span>Find Stays</span>
+                <span className="w-[52px] text-center leading-[1.15]">Find<br />Stays</span>
                 {currentRoute.page === 'stays' && (
                   <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-[#FF5A1F] rounded-full" />
                 )}
               </button>
               <button
                 onClick={() => handleNavClick('plan-trip')}
-                className={`flex items-center gap-1 transition-colors cursor-pointer py-1 relative ${
+                className={`flex items-center justify-center gap-1 transition-colors cursor-pointer py-1 relative min-h-[38px] ${
                   currentRoute.page === 'plan-trip' || currentRoute.page === 'plan-result' ? 'text-[#FF5A1F] font-bold' : 'text-slate-200 hover:text-white'
                 }`}
               >
                 <Sparkles className="w-3.5 h-3.5 text-[#FF5A1F]" />
-                <span>Smart Planner</span>
+                <span className="w-[60px] text-center leading-[1.15]">Smart<br />Planner</span>
                 {(currentRoute.page === 'plan-trip' || currentRoute.page === 'plan-result') && (
                   <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-[#FF5A1F] rounded-full" />
                 )}
