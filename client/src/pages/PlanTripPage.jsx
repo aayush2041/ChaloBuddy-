@@ -646,7 +646,7 @@ export default function PlanTripPage() {
                   📍 {originObj.city} ➔ {destinationObj.city} • 📅 {days} Days / {nights} Nights • 👥 {totalTravelers} Travelers ({recommendedRooms} Room{recommendedRooms > 1 ? 's' : ''})
                 </p>
                 <p className="text-slate-600">
-                  💰 Budget: ₹{totalCalculatedTargetBudget.toLocaleString('en-IN')} (₹{perPersonTargetBudget.toLocaleString('en-IN')}/person) • 🏨 {accommodationPreference} • 🚆 {intercityTransport} • 🚕 {localTransport}
+                  💰 Budget: ₹{totalCalculatedTargetBudget.toLocaleString('en-IN')} (₹{perPersonTargetBudget.toLocaleString('en-IN')}/person) • ✨ Transport & stay: Automatically optimized
                 </p>
               </div>
             </div>
