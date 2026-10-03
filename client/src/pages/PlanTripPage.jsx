@@ -108,7 +108,9 @@ export default function PlanTripPage() {
   // Q5: Style, Stay & Transit
   const [travelStyle, setTravelStyle] = useState('Comfortable');
   const [accommodationPreference, setAccommodationPreference] = useState('Hotel');
-  const [intercityTransport, setIntercityTransport] = useState('Train');
+  const [intercityTransport, setIntercityTransport] = useState('Cheapest available');
+  const [interests, setInterests] = useState(['Sightseeing', 'Nature', 'Food & Cafes']);
+  const [specialRequirements, setSpecialRequirements] = useState([]);
 
   // Calculate days & nights from dates
   const calculateDaysNights = () => {
@@ -135,7 +137,7 @@ export default function PlanTripPage() {
     budgetType === 'person' ? budgetAmount : Math.round(budgetAmount / totalTravelers);
 
   const canProceed = () => {
-    if (currentStep === 1) return destinationQuery.trim().length > 1 && originQuery.trim().length > 1;
+    if (currentStep === 1) return destinationQuery.trim().length > 1 && originQuery.trim().length > 1 && Number(destinationObj?.lat) && Number(destinationObj?.lng) && Number(originObj?.lat) && Number(originObj?.lng);
     if (currentStep === 2) return Boolean(dates.start && dates.end);
     if (currentStep === 3) return adults >= 1;
     if (currentStep === 4) return budgetAmount >= 1000;
@@ -182,13 +184,13 @@ export default function PlanTripPage() {
       roomsRequired: recommendedRooms,
       intercityTransportPreference: intercityTransport,
       localTransportPreference: 'Cab',
-      interests: ['Sightseeing', 'Nature', 'Food & Cafes'],
-      activityIntensity: 'Balanced',
+      interests,
+      activityIntensity: travelStyle === 'Relaxed' ? 'Relaxed' : travelStyle === 'Adventure' ? 'Packed' : 'Balanced',
+      specialRequirements,
     };
 
     setTimeout(() => {
-      generatePlan(criteria);
-      setIsGenerating(false);
+      generatePlan(criteria).finally(() => setIsGenerating(false));
     }, 800);
   };
 
@@ -638,6 +640,47 @@ export default function PlanTripPage() {
                       </span>
                     </button>
                   ))}
+                </div>
+              </div>
+
+              {/* Interests & Preferences */}
+              <div className="space-y-2 pt-2 border-t border-slate-100">
+                <label className="text-xs font-bold text-slate-700 block">WHAT DO YOU LIKE?</label>
+                <div className="flex flex-wrap gap-2">
+                  {['Nature', 'Adventure', 'Culture', 'History', 'Food & Cafes', 'Beaches', 'Nightlife', 'Shopping', 'Photography', 'Spiritual'].map((interest) => {
+                    const active = interests.includes(interest);
+                    return (
+                      <button
+                        key={interest}
+                        type="button"
+                        onClick={() => setInterests((prev) => active ? prev.filter((x) => x !== interest) : [...prev, interest])}
+                        className={`px-3 py-2 rounded-full text-xs font-bold border transition-all cursor-pointer ${active ? 'bg-[#FF5A1F] text-white border-[#FF5A1F]' : 'bg-white text-slate-600 border-slate-200 hover:border-[#FF5A1F]'}`}
+                      >
+                        {interest}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-[10px] text-slate-400">These preferences influence activity selection and itinerary pacing.</p>
+              </div>
+
+              {/* Special Requirements */}
+              <div className="space-y-2 pt-2 border-t border-slate-100">
+                <label className="text-xs font-bold text-slate-700 block">SPECIAL REQUIREMENTS</label>
+                <div className="flex flex-wrap gap-2">
+                  {['Vegetarian food', 'Senior-friendly', 'Child-friendly', 'Avoid long hikes', 'Accessibility needs'].map((item) => {
+                    const active = specialRequirements.includes(item);
+                    return (
+                      <button
+                        key={item}
+                        type="button"
+                        onClick={() => setSpecialRequirements((prev) => active ? prev.filter((x) => x !== item) : [...prev, item])}
+                        className={`px-3 py-2 rounded-full text-xs font-bold border transition-all cursor-pointer ${active ? 'bg-orange-50 text-[#FF5A1F] border-[#FF5A1F]' : 'bg-white text-slate-600 border-slate-200 hover:border-[#FF5A1F]'}`}
+                      >
+                        {item}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
