@@ -68,7 +68,7 @@ export async function discoverDestinationAttractions(location, limit = 10) {
 
   try {
     const url =
-      `https://en.wikipedia.org/w/api.php?action=query&generator=geosearch&ggsprimary=all&ggsnamespace=0&ggsradius=30000&ggslimit=${Math.min(20, Math.max(1, limit))}&ggscoord=${location.lat}%7C${location.lng}&prop=extracts%7Cpageimages&exintro=1&explaintext=1&exchars=420&piprop=thumbnail&pithumbsize=500&format=json&origin=*`;
+      `https://en.wikipedia.org/w/api.php?action=query&generator=geosearch&ggsprimary=all&ggsnamespace=0&ggsradius=30000&ggslimit=${Math.min(20, Math.max(1, limit))}&ggscoord=${location.lat}%7C${location.lng}&prop=extracts%7Cpageimages%7Ccoordinates&exintro=1&explaintext=1&exchars=420&piprop=thumbnail&pithumbsize=500&format=json&origin=*`;
     const response = await fetch(url);
     if (!response.ok) return [];
 
