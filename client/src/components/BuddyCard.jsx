@@ -24,7 +24,7 @@ export default function BuddyCard({ buddy }) {
   };
 
   return (
-    <div className="bg-[#0C2438] rounded-3xl p-6 border border-white/10 shadow-lg hover:shadow-2xl transition-all duration-300 card-hover flex flex-col justify-between relative overflow-hidden group">
+    <div className="bg-[#0C2438] rounded-3xl p-4 sm:p-6 border border-white/10 shadow-lg hover:shadow-2xl transition-all duration-300 card-hover flex flex-col justify-between relative overflow-hidden group">
       {/* Top action: Heart */}
       <button
         onClick={handleHeartClick}

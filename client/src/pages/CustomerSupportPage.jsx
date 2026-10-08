@@ -27,6 +27,7 @@ export default function CustomerSupportPage() {
 
   const handleCreateTicket = async (e) => {
     e.preventDefault();
+    if (loading) return;
     if (!subject.trim() || !message.trim()) return;
 
     setLoading(true);
@@ -47,10 +48,10 @@ export default function CustomerSupportPage() {
         setOrderNumber('');
         loadTickets();
       } else {
-        addToast(res.error || 'Failed to submit ticket', 'error');
+        addToast(res.error || 'We couldn\'t complete this request right now. Please try again in a few moments.', 'error');
       }
     } catch {
-      addToast('Error submitting support ticket', 'error');
+      addToast('Something went wrong. Please check your connection and try again.', 'error');
     } finally {
       setLoading(false);
     }

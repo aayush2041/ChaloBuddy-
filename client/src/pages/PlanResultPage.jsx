@@ -28,18 +28,18 @@ import {
   Compass,
   Edit3,
   X,
-  ArrowUp,
-  ArrowDown,
   Info,
   Check,
+  Sunrise,
+  Sun,
+  Sunset,
 } from 'lucide-react';
 
 export default function PlanResultPage() {
   const {
     smartPlan,
-    removePlanActivity,
-    addPlanActivity,
     generatePlan,
+    saveGeneratedPlan,
     formatPrice,
     setShareModalData,
     addToast,
@@ -47,96 +47,36 @@ export default function PlanResultPage() {
   } = useStore();
 
   const [activeTab, setActiveTab] = useState('itinerary'); // 'itinerary' | 'budget' | 'stay' | 'transport'
-  const [showRegenerateDropdown, setShowRegenerateDropdown] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
 
-  // Add Activity Modal state
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [newActivityDay, setNewActivityDay] = useState(0);
-  const [newActivityTime, setNewActivityTime] = useState('03:30 PM');
-  const [newActivityTitle, setNewActivityTitle] = useState('');
-  const [newActivityDesc, setNewActivityDesc] = useState('');
-  const [newActivityCategory, setNewActivityCategory] = useState('Sightseeing');
-  const [newActivityCost, setNewActivityCost] = useState(0);
-
   // Edit Constraints state
-  const [editBudget, setEditBudget] = useState(smartPlan?.userTargetBudget || 15000);
-  const [editBudgetType, setEditBudgetType] = useState(smartPlan?.budgetType || 'person');
-  const [editFlexibility, setEditFlexibility] = useState(smartPlan?.budgetFlexibility || 'Moderate');
+  const [editBudget, setEditBudget] = useState(smartPlan?.userTargetBudget || 25000);
   const [editTravelers, setEditTravelers] = useState(smartPlan?.travelers || 2);
-  const [editTransport, setEditTransport] = useState(smartPlan?.criteria?.intercityTransportPreference || 'Cheapest available');
-  const [editAccom, setEditAccom] = useState(smartPlan?.criteria?.accommodationPreference || 'Hotel');
-  const [editIntensity, setEditIntensity] = useState(smartPlan?.criteria?.activityIntensity || 'Balanced');
 
   if (!smartPlan) {
     return (
-      <div className="min-h-screen bg-[#F5F7F8] pt-32 text-center p-8">
-        <p className="text-sm text-slate-500">No generated plan found.</p>
-        <button
-          onClick={() => navigate('plan-trip')}
-          className="btn-primary-cb !text-xs mt-4"
-        >
-          Create New Plan
-        </button>
+      <div className="min-h-screen bg-[#F5F7F8] pt-32 text-center p-8 text-[#071A2B]">
+        <div className="max-w-md mx-auto bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+          <Compass className="w-10 h-10 text-[#FF5A1F] mx-auto" />
+          <h2 className="text-xl font-black text-[#071A2B]">No Generated Plan Found</h2>
+          <p className="text-xs text-slate-500">
+            Create a realistic, budget-verified trip plan using the Smart Trip Planner.
+          </p>
+          <button
+            onClick={() => navigate('plan-trip')}
+            className="btn-primary-cb !text-xs !py-2.5 !px-6 cursor-pointer"
+          >
+            Create New Trip Plan
+          </button>
+        </div>
       </div>
     );
   }
 
-  // Safe regeneration: uses preserved criteria, eliminating compounding bugs!
-  const handleRegenerate = (mode = 'full') => {
-    setShowRegenerateDropdown(false);
-    const criteria = smartPlan.criteria || {
-      destination: smartPlan.destination,
-      origin: smartPlan.origin?.fullName || 'Delhi',
-      travelers: smartPlan.travelers,
-      days: smartPlan.days,
-      nights: smartPlan.nights,
-      budget: smartPlan.userTargetBudget || 15000,
-      budgetType: smartPlan.budgetType || 'person',
-      travelStyle: smartPlan.travelStyle,
-    };
-
-    if (mode === 'itinerary') {
-      generatePlan({ ...criteria, regenerateType: 'itinerary' });
-      addToast('Itinerary schedule refreshed with fresh neighborhood spots!', 'success');
-      return;
-    }
-
-    if (mode === 'stay') {
-      generatePlan({ ...criteria, regenerateType: 'stay' });
-      addToast('Stay recommendation refreshed!', 'success');
-      return;
-    }
-
-    generatePlan(criteria);
-    addToast('Plan refreshed with your verified constraints!', 'success');
-  };
-
   const handleSavePlan = () => {
-    addToast('Plan saved to your My Trips workspace! 📁', 'success');
-    navigate('my-trips', { tab: 'upcoming' });
-  };
-
-  const handleAddActivitySubmit = (e) => {
-    e.preventDefault();
-    if (!newActivityTitle.trim()) return;
-
-    addPlanActivity(newActivityDay, {
-      id: `custom-act-${Date.now()}`,
-      time: newActivityTime,
-      title: newActivityTitle,
-      desc: newActivityDesc || 'Custom traveler activity',
-      category: newActivityCategory,
-      costPerPerson: Number(newActivityCost) || 0,
-      estimatedCost: Number(newActivityCost) || 0,
-      travelTime: '15 mins',
-      isMeal: newActivityCategory === 'Food',
-    });
-
-    setNewActivityTitle('');
-    setNewActivityDesc('');
-    setNewActivityCost(0);
-    setShowAddModal(false);
+    if (!smartPlan) return;
+    saveGeneratedPlan(smartPlan);
+    navigate('my-trips', { tab: 'saved' });
   };
 
   const handleApplyEditConstraints = (e) => {
@@ -145,13 +85,9 @@ export default function PlanResultPage() {
       ...(smartPlan.criteria || {}),
       userBudget: Number(editBudget),
       budget: Number(editBudget),
-      budgetType: editBudgetType,
-      budgetFlexibility: editFlexibility,
+      budgetType: 'total',
       travelers: Number(editTravelers),
       adults: Number(editTravelers),
-      intercityTransportPreference: editTransport,
-      accommodationPreference: editAccom,
-      activityIntensity: editIntensity,
     };
 
     generatePlan(updatedCriteria);
@@ -159,87 +95,53 @@ export default function PlanResultPage() {
     addToast('Plan recalculated with your updated travel criteria!', 'success');
   };
 
-  const handleSwitchTransport = (transportId) => {
-    const updatedCriteria = {
-      ...(smartPlan.criteria || {}),
-      intercityTransportPreference: transportId,
-    };
-    generatePlan(updatedCriteria);
-    addToast(`Intercity transport updated to ${transportId}!`, 'success');
-  };
+  const isOverBudget = Boolean(smartPlan.isOverBudget);
+  const shortfallTotal = Number(smartPlan.shortfallTotal) || 0;
+  const shortfallPerPerson = Number(smartPlan.shortfallPerPerson) || 0;
+  const remainingBudget = Number(smartPlan.remainingBudget) || 0;
+  const userBudget = Number(smartPlan.userTargetBudget) || 0;
+  const totalCost = Number(smartPlan.totalBudget) || 0;
 
-  const isOverBudget = smartPlan.isOverBudget || (smartPlan.shortfall && smartPlan.shortfall.total > 0);
-  const shortfallTotal = smartPlan.shortfall?.total || 0;
-  const shortfallPerPerson = smartPlan.shortfall?.perPerson || 0;
-  const budgetUsed = smartPlan.budgetUsedPercent || 100;
+  // Breakdown items (strictly 6 items)
+  const breakdown = smartPlan.budgetBreakdown || [];
 
   return (
-    <div className="min-h-screen bg-[#F5F7F8] pt-24 pb-28">
-      {/* Top Banner with Actions */}
-      <div className="bg-[#071A2B] text-white py-10 px-4 sm:px-6 lg:px-8 border-b border-white/10">
+    <div className="min-h-screen bg-[#F5F7F8] pt-24 pb-28 text-[#071A2B]">
+      {/* 1. TOP HEADER BANNER */}
+      <section className="bg-[#071A2B] text-white py-10 px-4 sm:px-6 lg:px-8 border-b border-white/10">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-end justify-between gap-6">
           <div className="space-y-2">
-            <span className="text-xs font-bold text-[#FF5A1F] uppercase tracking-wider flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5" />
-              Verified Realistic Plan
-            </span>
-            <h1 className="text-3xl sm:text-4xl font-extrabold text-white">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 border border-white/15 text-xs font-semibold text-slate-200">
+              <Sparkles className="w-3.5 h-3.5 text-[#FF5A1F]" />
+              <span>Smart Itinerary</span>
+            </div>
+            <h1 className="text-2xl sm:text-4xl font-black text-white">
               {smartPlan.tripTitle}
             </h1>
             <p className="text-xs sm:text-sm text-slate-300">
               {smartPlan.originCity ? `${smartPlan.originCity} ➔ ` : ''}
-              {smartPlan.destination} • {smartPlan.duration} • {smartPlan.travelers} Travelers
+              {smartPlan.destination} • {smartPlan.duration} • {smartPlan.travelers} {smartPlan.travelers === 1 ? 'Traveler' : 'Travelers'}
             </p>
           </div>
 
-          {/* Action Buttons: Edit, Regenerate, Share, Save */}
-          <div className="flex flex-wrap items-center gap-2">
+          {/* Action CTAs: Edit, Share, Save */}
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             <button
               onClick={() => setShowEditModal(true)}
-              className="btn-secondary-cb !bg-white/10 !text-white !border-white/20 hover:!bg-white/20 !py-2 !px-3.5 !text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+              className="flex-1 sm:flex-initial btn-secondary-cb !bg-white/10 !text-white !border-white/20 hover:!bg-white/20 !py-2.5 sm:!py-2 !px-3.5 !text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <Edit3 className="w-3.5 h-3.5 text-amber-400" />
-              <span>Edit Constraints</span>
+              <span>Edit Budget</span>
             </button>
 
-            {/* Targeted Regenerate Dropdown */}
-            <div className="relative">
-              <button
-                onClick={() => setShowRegenerateDropdown(!showRegenerateDropdown)}
-                className="btn-secondary-cb !bg-white/10 !text-white !border-white/20 hover:!bg-white/20 !py-2 !px-3.5 !text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
-              >
-                <RefreshCw className="w-3.5 h-3.5" />
-                <span>Regenerate</span>
-                <ChevronDown className="w-3 h-3 text-slate-400" />
-              </button>
-
-              {showRegenerateDropdown && (
-                <div className="absolute right-0 mt-2 w-48 bg-[#0C2438] border border-white/15 rounded-2xl shadow-2xl py-2 z-50 text-xs">
-                  <button
-                    onClick={() => handleRegenerate('full')}
-                    className="w-full text-left px-4 py-2 hover:bg-white/10 text-white flex items-center gap-2"
-                  >
-                    <span>Full Plan Refresh</span>
-                  </button>
-                  <button
-                    onClick={() => handleRegenerate('itinerary')}
-                    className="w-full text-left px-4 py-2 hover:bg-white/10 text-slate-300 hover:text-white flex items-center gap-2"
-                  >
-                    <span>Rotate Activities Only</span>
-                  </button>
-                  <button
-                    onClick={() => handleRegenerate('stay')}
-                    className="w-full text-left px-4 py-2 hover:bg-white/10 text-slate-300 hover:text-white flex items-center gap-2"
-                  >
-                    <span>Alternate Stays Only</span>
-                  </button>
-                </div>
-              )}
-            </div>
-
             <button
-              onClick={() => setShareModalData({ title: smartPlan.tripTitle, url: window.location.href })}
-              className="btn-secondary-cb !bg-white/10 !text-white !border-white/20 hover:!bg-white/20 !py-2 !px-3.5 !text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+              onClick={() =>
+                setShareModalData({
+                  title: smartPlan.tripTitle,
+                  url: window.location.href,
+                })
+              }
+              className="btn-secondary-cb !bg-white/10 !text-white !border-white/20 hover:!bg-white/20 !py-2.5 sm:!py-2 !px-3.5 !text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <Share2 className="w-3.5 h-3.5" />
               <span>Share</span>
@@ -247,148 +149,164 @@ export default function PlanResultPage() {
 
             <button
               onClick={handleSavePlan}
-              className="btn-primary-cb !py-2 !px-5 !text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-md shadow-[#FF5A1F]/30"
+              className="flex-1 sm:flex-initial btn-primary-cb !py-2.5 sm:!py-2 !px-5 !text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-md shadow-[#FF5A1F]/30"
             >
               <Save className="w-3.5 h-3.5" />
               <span>Save Plan</span>
             </button>
           </div>
         </div>
-      </div>
+      </section>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 space-y-6">
+      {/* 2. MAIN RESULTS CONTAINER */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 space-y-6">
 
-        {/* Shortfall Alert Card (if budget exceeded) */}
+        {/* IMPOSSIBLE / SHORTFALL BUDGET ALERT (PROMPT REQUIREMENT) */}
         {isOverBudget && (
-          <div className="bg-amber-500/10 border-2 border-amber-500/30 rounded-3xl p-6 text-[#071A2B] space-y-3">
+          <div
+            data-testid="planner-overbudget-alert"
+            className="bg-amber-500/10 border-2 border-amber-500/40 rounded-3xl p-6 text-[#071A2B] space-y-4"
+          >
             <div className="flex items-start gap-3">
               <div className="p-2 bg-amber-500 text-white rounded-xl shrink-0 mt-0.5">
                 <AlertTriangle className="w-5 h-5" />
               </div>
               <div className="space-y-1">
-                <h3 className="font-extrabold text-base text-amber-900">
-                  Estimated Trip Cost Exceeds Your Target Budget
+                <h3 className="font-black text-base sm:text-lg text-amber-950">
+                  {smartPlan.optimization?.explanation ||
+                    `This trip is unlikely to fit within ₹${userBudget.toLocaleString('en-IN')} for ${smartPlan.travelers} ${smartPlan.travelers === 1 ? 'person' : 'people'}.`}
                 </h3>
-                <p className="text-xs text-amber-800 leading-relaxed">
-                  Realistic calculated expenditure is{' '}
-                  <strong>₹{Number(smartPlan.totalBudget).toLocaleString('en-IN')}</strong> (₹{Number(smartPlan.perPersonBudget).toLocaleString('en-IN')}/person), while your budget was set to{' '}
-                  <strong>₹{Number(smartPlan.userTargetBudget).toLocaleString('en-IN')}</strong> (₹{Number(smartPlan.userPerPersonBudget).toLocaleString('en-IN')}/person). Shortfall:{' '}
+                <p className="text-xs text-amber-900 leading-relaxed">
+                  The minimum realistic cost for this journey is{' '}
+                  <strong className="text-[#071A2B]">₹{totalCost.toLocaleString('en-IN')}</strong> (₹{Math.round(totalCost / smartPlan.travelers).toLocaleString('en-IN')}/person), creating a shortfall of{' '}
                   <span className="font-extrabold text-rose-600">
-                    ₹{shortfallTotal.toLocaleString('en-IN')} total (₹{shortfallPerPerson.toLocaleString('en-IN')}/person)
-                  </span>.
+                    ₹{shortfallTotal.toLocaleString('en-IN')} (₹{shortfallPerPerson.toLocaleString('en-IN')}/person)
+                  </span>. We do not fabricate cheap, unrealistic itineraries.
                 </p>
               </div>
             </div>
 
-            {/* Actionable Recommendations */}
-            <div className="bg-white/80 p-4 rounded-2xl border border-amber-200/80 space-y-2 text-xs">
-              <span className="font-bold text-slate-800 flex items-center gap-1.5">
-                <Info className="w-3.5 h-3.5 text-amber-600" />
-                Actionable ways to bring costs within your target budget:
+            {/* Realistic Options List (Prompt Requirement) */}
+            <div className="bg-white/90 p-5 rounded-2xl border border-amber-300 space-y-2 text-xs">
+              <span className="font-bold text-slate-900 flex items-center gap-1.5">
+                <Info className="w-4 h-4 text-amber-600" />
+                Realistic options to make this trip work:
               </span>
-              <ul className="space-y-1.5 text-slate-600 pl-4 list-disc">
-                {(smartPlan.shortfall?.suggestions && smartPlan.shortfall.suggestions.length > 0
-                  ? smartPlan.shortfall.suggestions
+              <ul className="space-y-1.5 text-slate-700 pl-5 list-disc">
+                {(smartPlan.optimization?.actionableOptions && smartPlan.optimization.actionableOptions.length > 0
+                  ? smartPlan.optimization.actionableOptions
                   : [
-                      'Switch to Train (Express / 3AC) or Volvo Bus for intercity transit to save on vehicle costs.',
-                      'Choose a cozy Homestay or Budget Hotel instead of premium resort rooms.',
-                      'Rent a scooter or use public transit instead of dedicated private cabs for local commute.',
-                      `Increase target budget to ₹${smartPlan.perPersonBudget?.toLocaleString('en-IN')}/person to keep current preferences.`,
+                      `Reduce number of days to lower lodging and meal expenses.`,
+                      `Increase budget to at least ₹${totalCost.toLocaleString('en-IN')} to cover realistic expenses.`,
+                      `Choose cheaper transport (e.g. Sleeper Train or AC Bus instead of Flights/Private Cabs).`,
+                      `Choose cheaper accommodation (e.g. Hostels or Budget Homestays instead of Hotels).`,
                     ]
-                ).map((sug, i) => (
-                  <li key={i}>{sug}</li>
+                ).map((opt, i) => (
+                  <li key={i} className="leading-relaxed">
+                    <strong>{opt}</strong>
+                  </li>
                 ))}
               </ul>
+
               <div className="pt-2">
                 <button
+                  type="button"
                   onClick={() => setShowEditModal(true)}
-                  className="btn-primary-cb !py-1.5 !px-4 !text-xs font-bold inline-flex items-center gap-1"
+                  className="btn-primary-cb !py-2 !px-4 !text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
                 >
-                  <span>Adjust Constraints in Edit Modal →</span>
+                  <Edit3 className="w-3.5 h-3.5" />
+                  <span>Adjust Budget or Travelers →</span>
                 </button>
               </div>
             </div>
           </div>
         )}
 
-        {/* Metric Cards Banner: Budget, Weather, Stay, Route */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
-            <span className="text-xs text-slate-400 flex items-center gap-1 font-semibold">
+        {/* 3. METRIC CARDS OVERVIEW */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          {/* Budget Metric Card */}
+          <div className="bg-white p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
+            <span className="text-xs text-slate-500 flex items-center gap-1 font-bold">
               <Wallet className="w-3.5 h-3.5 text-[#FF5A1F]" />
-              Calculated Budget
+              Calculated Total Cost
             </span>
             <div className="mt-2">
-              <p className="text-xl font-black text-[#071A2B]">
-                {formatPrice(smartPlan.totalBudget)}
+              <p className="text-2xl font-black text-[#071A2B]">
+                {formatPrice(totalCost)}
               </p>
-              <p className="text-[11px] font-bold text-[#FF5A1F]">
+              <p className="text-xs font-bold text-[#FF5A1F] mt-0.5">
                 ₹{Number(smartPlan.perPersonBudget).toLocaleString('en-IN')} / person
               </p>
-              <p className="text-[10px] text-slate-400 mt-1">
-                Target: ₹{Number(smartPlan.userTargetBudget).toLocaleString('en-IN')} ({budgetUsed}% used)
+              <p className="text-[11px] text-slate-400 mt-1">
+                Your entered budget: ₹{userBudget.toLocaleString('en-IN')}
               </p>
             </div>
           </div>
 
+          {/* Weather Metric Card */}
           <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
-            <span className="text-xs text-slate-400 flex items-center gap-1 font-semibold">
+            <span className="text-xs text-slate-500 flex items-center gap-1 font-bold">
               <CloudSun className="w-3.5 h-3.5 text-amber-500" />
-              Weather Forecast
+              Weather Estimate
             </span>
             <div className="mt-2">
-              <p className="text-sm font-extrabold text-[#071A2B] truncate">
+              <p className="text-sm font-black text-[#071A2B] truncate">
                 {smartPlan.weather}
               </p>
               <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">
-                {smartPlan.weatherDetails?.summary || 'Ideal sightseeing climate'}
+                {smartPlan.weatherDetails?.summary || 'Ideal sightseeing conditions'}
               </p>
+              <span className="inline-block mt-1 text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded">
+                Historical climate model
+              </span>
             </div>
           </div>
 
+          {/* Stay Metric Card */}
           <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
-            <span className="text-xs text-slate-400 flex items-center gap-1 font-semibold">
+            <span className="text-xs text-slate-500 flex items-center gap-1 font-bold">
               <BedDouble className="w-3.5 h-3.5 text-sky-500" />
-              Stay Recommendation
+              Selected Stay
             </span>
             <div className="mt-2">
-              <p className="text-sm font-extrabold text-[#071A2B] truncate">
+              <p className="text-sm font-black text-[#071A2B] truncate">
                 {smartPlan.stayRecommendation?.name}
               </p>
-              <p className="text-[11px] text-slate-500 truncate">
-                {smartPlan.stayRecommendation?.roomLabel || `${smartPlan.stayRecommendation?.rooms || 1} Rooms`}
+              <p className="text-[11px] text-slate-500 truncate mt-0.5">
+                {smartPlan.stayRecommendation?.roomLabel || 'Standard Accommodation'}
               </p>
-              <p className="text-[11px] font-bold text-emerald-600 mt-0.5">
-                {smartPlan.stayRecommendation?.price}
+              <p className="text-xs font-bold text-emerald-600 mt-1">
+                ₹{Number(smartPlan.stayRecommendation?.totalPrice || 0).toLocaleString('en-IN')} total ({smartPlan.nights} nights)
               </p>
             </div>
           </div>
 
+          {/* Route Metric Card */}
           <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
-            <span className="text-xs text-slate-400 flex items-center gap-1 font-semibold">
+            <span className="text-xs text-slate-500 flex items-center gap-1 font-bold">
               <Route className="w-3.5 h-3.5 text-purple-500" />
               Transit Route
             </span>
             <div className="mt-2">
-              <p className="text-sm font-extrabold text-[#071A2B] truncate">
+              <p className="text-sm font-black text-[#071A2B] truncate">
                 {smartPlan.distance}
               </p>
-              <p className="text-[11px] text-slate-500 truncate">
+              <p className="text-[11px] text-slate-500 truncate mt-0.5">
                 {smartPlan.transportRecommendation?.method}
               </p>
-              <p className="text-[11px] font-bold text-[#FF5A1F] mt-0.5">
+              <p className="text-xs font-bold text-[#FF5A1F] mt-1">
                 {smartPlan.transportRecommendation?.duration} duration
               </p>
             </div>
           </div>
         </div>
 
-        {/* Tab Selection */}
+        {/* 4. TAB SELECTION */}
         <div className="flex items-center gap-2 border-b border-slate-200 pb-1 text-sm font-bold overflow-x-auto scrollbar-none">
           {[
-            { id: 'itinerary', label: 'Day-by-Day Activities' },
-            { id: 'budget', label: '7-Category Budget Breakdown' },
-            { id: 'stay', label: 'Stay & Room Details' },
+            { id: 'itinerary', label: 'Day-by-Day Itinerary' },
+            { id: 'budget', label: 'Complete Cost Calculation' },
+            { id: 'stay', label: 'Accommodation Details' },
             { id: 'transport', label: 'Transit Route & Options' },
           ].map((tab) => (
             <button
@@ -405,215 +323,324 @@ export default function PlanResultPage() {
           ))}
         </div>
 
-        {/* TAB 1: DAY-BY-DAY ACTIVITIES */}
+        {/* ================= TAB 1: DAY-BY-DAY ITINERARY ================= */}
         {activeTab === 'itinerary' && (
           <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
-                <h3 className="font-extrabold text-xl text-[#071A2B]">Geographically Clustered Itinerary</h3>
+                <h2 className="text-xl font-black text-[#071A2B]">
+                  Day-by-Day Geographically Sensible Itinerary
+                </h2>
                 <p className="text-xs text-slate-500">
-                  Attractions are scheduled by neighborhood to prevent city backtracking. Includes travel buffers and regional meal times.
+                  Each day is divided into Morning, Afternoon, and Evening windows. Stops are clustered in the same area to eliminate criss-cross backtracking.
                 </p>
               </div>
 
-              <button
-                onClick={() => setShowAddModal(true)}
-                className="btn-primary-cb !py-2 !px-4 !text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-md shadow-[#FF5A1F]/30"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Add Stop / Activity</span>
-              </button>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-bold">
+                <MapPin className="w-3.5 h-3.5 text-[#FF5A1F]" />
+                <span>Geographically Clustered</span>
+              </div>
             </div>
 
             <div className="space-y-6">
-              {(smartPlan.dayByDay || []).map((day, dayIdx) => (
+              {(smartPlan.dayByDay || []).map((day) => (
                 <div
-                  key={dayIdx}
-                  className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4"
+                  key={day.day}
+                  className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-6"
                 >
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 gap-2">
+                  {/* Day Header */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-2">
                     <div>
-                      <span className="font-extrabold text-sm text-[#FF5A1F] uppercase tracking-wider block">
-                        Day {day.day}: {day.title}
+                      <span className="text-xs font-black text-[#FF5A1F] uppercase tracking-wider block">
+                        Day {day.day}
                       </span>
+                      <h3 className="text-lg font-black text-[#071A2B] mt-0.5">
+                        {day.title}
+                      </h3>
                       {day.neighborhood && (
-                        <span className="text-[11px] text-slate-400 flex items-center gap-1 font-medium mt-0.5">
-                          <MapPin className="w-3 h-3 text-[#FF5A1F]" />
-                          Area cluster: {day.neighborhood}
-                        </span>
+                        <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5 font-medium">
+                          <MapPin className="w-3.5 h-3.5 text-[#FF5A1F]" />
+                          <span>Primary area cluster: {day.neighborhood}</span>
+                        </p>
                       )}
                     </div>
 
-                    <button
-                      onClick={() => {
-                        setNewActivityDay(dayIdx);
-                        setShowAddModal(true);
-                      }}
-                      className="text-xs text-slate-500 hover:text-[#FF5A1F] flex items-center gap-1 font-semibold cursor-pointer self-start sm:self-auto"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Add stop to Day {day.day}</span>
-                    </button>
+                    {/* Day Daily Estimates Summary Badge */}
+                    <div className="bg-[#F5F7F8] p-3 rounded-2xl border border-slate-200 text-xs space-y-1 sm:text-right">
+                      <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">
+                        Estimated Day Costs (Per Person)
+                      </span>
+                      <p className="font-extrabold text-[#071A2B]">
+                        Local Travel: ₹{day.estimatedLocalTravel?.costPerPerson || 0} • Food: ₹{day.estimatedFood?.costPerPerson || 0}
+                      </p>
+                    </div>
                   </div>
 
-                  <div className="space-y-3">
-                    {day.activities.map((act, actIdx) => (
-                      <div
-                        key={act.id || actIdx}
-                        className={`p-4 rounded-2xl border transition-all flex items-start justify-between gap-4 group ${
-                          act.isMeal
-                            ? 'bg-amber-50/40 border-amber-200/70'
-                            : act.category === 'Transport'
-                            ? 'bg-purple-50/40 border-purple-200/70'
-                            : act.category === 'Stay'
-                            ? 'bg-sky-50/40 border-sky-200/70'
-                            : 'bg-slate-50 border-slate-200/80 hover:bg-slate-100/70'
-                        }`}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className="flex flex-col items-center shrink-0">
-                            <span className="text-xs font-bold text-[#FF5A1F] bg-white px-2 py-0.5 rounded-md border border-orange-200 mt-0.5 shadow-2xs">
-                              {act.time}
-                            </span>
-                            {act.travelTime && (
-                              <span className="text-[9px] text-slate-400 mt-1 whitespace-nowrap">
-                                ⏱️ {act.travelTime}
-                              </span>
-                            )}
+                  {/* Morning, Afternoon, Evening Cards (Prompt Requirement) */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Morning Window */}
+                    {day.morning && (
+                      <div className="p-4 rounded-2xl bg-amber-50/50 border border-amber-200/60 space-y-2 flex flex-col justify-between">
+                        <div className="space-y-1.5">
+                          <div className="flex items-center gap-1.5 text-xs font-black text-amber-900">
+                            <Sunrise className="w-4 h-4 text-amber-600" />
+                            <span>Morning ({day.morning.time})</span>
                           </div>
+                          <p className="text-xs font-bold text-[#071A2B]">
+                            {day.morning.title}
+                          </p>
+                          <p className="text-[11px] text-slate-600 leading-relaxed">
+                            {day.morning.description}
+                          </p>
+                        </div>
+                      </div>
+                    )}
 
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <p className="font-extrabold text-xs text-[#071A2B]">{act.title}</p>
-                              {act.category && (
-                                <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-white text-slate-600 border border-slate-200">
-                                  {act.category}
+                    {/* Afternoon Window */}
+                    {day.afternoon && (
+                      <div className="p-4 rounded-2xl bg-orange-50/50 border border-orange-200/60 space-y-2 flex flex-col justify-between">
+                        <div className="space-y-1.5">
+                          <div className="flex items-center gap-1.5 text-xs font-black text-orange-900">
+                            <Sun className="w-4 h-4 text-[#FF5A1F]" />
+                            <span>Afternoon ({day.afternoon.time})</span>
+                          </div>
+                          <p className="text-xs font-bold text-[#071A2B]">
+                            {day.afternoon.title}
+                          </p>
+                          <p className="text-[11px] text-slate-600 leading-relaxed">
+                            {day.afternoon.description}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Evening Window */}
+                    {day.evening && (
+                      <div className="p-4 rounded-2xl bg-indigo-50/50 border border-indigo-200/60 space-y-2 flex flex-col justify-between">
+                        <div className="space-y-1.5">
+                          <div className="flex items-center gap-1.5 text-xs font-black text-indigo-900">
+                            <Sunset className="w-4 h-4 text-indigo-600" />
+                            <span>Evening ({day.evening.time})</span>
+                          </div>
+                          <p className="text-xs font-bold text-[#071A2B]">
+                            {day.evening.title}
+                          </p>
+                          <p className="text-[11px] text-slate-600 leading-relaxed">
+                            {day.evening.description}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Chronological Activities / Stops */}
+                  <div className="space-y-2.5 pt-2">
+                    <span className="text-xs font-bold text-[#071A2B] block">
+                      Chronological Stops &amp; Schedule:
+                    </span>
+                    <div className="space-y-2">
+                      {(day.activities || []).map((act, actIdx) => (
+                        <div
+                          key={act.id || actIdx}
+                          className={`p-3.5 rounded-2xl border text-xs flex items-start justify-between gap-3 ${
+                            act.isMeal
+                              ? 'bg-amber-50/30 border-amber-200/60'
+                              : act.category === 'Transport'
+                              ? 'bg-purple-50/30 border-purple-200/60'
+                              : act.category === 'Accommodation'
+                              ? 'bg-sky-50/30 border-sky-200/60'
+                              : 'bg-slate-50/60 border-slate-200/70'
+                          }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="flex flex-col items-center shrink-0">
+                              <span className="font-extrabold text-[11px] text-[#FF5A1F] bg-white px-2 py-0.5 rounded-md border border-orange-200 shadow-2xs">
+                                {act.time}
+                              </span>
+                              {act.travelTime && (
+                                <span className="text-[9px] text-slate-400 mt-1 whitespace-nowrap">
+                                  ⏱️ {act.travelTime}
                                 </span>
                               )}
                             </div>
-                            <p className="text-xs text-slate-500 leading-relaxed">{act.desc}</p>
-                            {act.estimatedCost > 0 && (
-                              <p className="text-[11px] font-bold text-emerald-600">
-                                Est. Ticket / Entry: ₹{act.estimatedCost.toLocaleString('en-IN')}/person
-                              </p>
-                            )}
-                          </div>
-                        </div>
 
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all shrink-0">
-                          <button
-                            onClick={() => removePlanActivity(dayIdx, actIdx)}
-                            className="p-1.5 text-slate-400 hover:text-red-500 transition-all cursor-pointer rounded-lg hover:bg-white"
-                            title="Remove activity"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                            <div className="space-y-0.5">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-[#071A2B]">{act.title}</span>
+                                {act.category && (
+                                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-white text-slate-600 border border-slate-200">
+                                    {act.category}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-slate-500 leading-relaxed">{act.desc}</p>
+                            </div>
+                          </div>
+
+                          {act.estimatedCost > 0 && (
+                            <span className="text-[11px] font-bold text-emerald-600 shrink-0">
+                              Est. ₹{act.estimatedCost.toLocaleString('en-IN')}
+                            </span>
+                          )}
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
+
+                  {/* Day Accommodation Footer Note */}
+                  {day.accommodation && (
+                    <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs flex items-center justify-between text-slate-600">
+                      <div className="flex items-center gap-2">
+                        <BedDouble className="w-4 h-4 text-sky-600" />
+                        <span><strong>Accommodation:</strong> {day.accommodation.name} ({day.accommodation.location})</span>
+                      </div>
+                      <span className="text-[11px] font-semibold text-slate-500">{day.accommodation.note}</span>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* TAB 2: 7-CATEGORY BUDGET BREAKDOWN */}
+        {/* ================= TAB 2: COMPLETE COST CALCULATION ================= */}
         {activeTab === 'budget' && (
-          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-6">
-            <div>
-              <h3 className="font-extrabold text-xl text-[#071A2B]">7-Category Deterministic Budget Breakdown</h3>
+          <div className="bg-white rounded-3xl p-6 sm:p-10 border border-slate-200 shadow-xl space-y-8">
+            <div className="space-y-1">
+              <h2 className="text-2xl font-black text-[#071A2B]">
+                Mathematically Exact Cost Calculation
+              </h2>
               <p className="text-xs text-slate-500">
-                Calculated down to the rupee based on highway distances, room counts, daily meals, local transit and safety reserves.
+                Every displayed cost directly contributes to the total. No hidden fees or random discrepancies.
               </p>
             </div>
 
-            {/* Budget Cards Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {(smartPlan.budgetBreakdown || []).map((item, idx) => (
-                <div key={idx} className="p-5 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-center justify-between text-xs text-slate-500 font-medium">
-                      <span>{item.category}</span>
-                      <span className="font-bold text-[#FF5A1F]">{item.percentage}%</span>
-                    </div>
-                    <p className="text-2xl font-black text-[#071A2B] mt-2">
-                      {formatPrice(item.amount)}
-                    </p>
-                    <p className="text-xs font-semibold text-slate-500 mt-0.5">
-                      ₹{item.perPerson?.toLocaleString('en-IN') || Math.round(item.amount / smartPlan.travelers).toLocaleString('en-IN')} / person
-                    </p>
-                  </div>
+            {/* 6-Category Component Table (Prompt Requirement) */}
+            <div className="border border-slate-200 rounded-2xl overflow-hidden">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-[#F5F7F8] border-b border-slate-200 font-bold text-slate-600 uppercase text-[10px] tracking-wider">
+                  <tr>
+                    <th className="p-3.5 sm:px-6">Component</th>
+                    <th className="p-3.5 sm:px-6">Description</th>
+                    <th className="p-3.5 sm:px-6 text-right">Per Person</th>
+                    <th className="p-3.5 sm:px-6 text-right">Total Amount</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                  {breakdown.map((item) => (
+                    <tr key={item.key} className="hover:bg-slate-50/60 transition-colors">
+                      <td className="p-3.5 sm:px-6 font-bold text-[#071A2B]">
+                        {item.category}
+                      </td>
+                      <td className="p-3.5 sm:px-6 text-slate-500">
+                        {item.label}
+                      </td>
+                      <td className="p-3.5 sm:px-6 text-right text-slate-600 font-semibold">
+                        ₹{item.perPerson?.toLocaleString('en-IN')}
+                      </td>
+                      <td className="p-3.5 sm:px-6 text-right font-black text-[#071A2B]">
+                        ₹{item.amount?.toLocaleString('en-IN')}
+                      </td>
+                    </tr>
+                  ))}
 
-                  <div className="w-full bg-slate-200 h-2 rounded-full mt-4 overflow-hidden">
-                    <div
-                      className="bg-[#FF5A1F] h-full rounded-full transition-all"
-                      style={{ width: `${item.percentage}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
+                  {/* MATHEMATICAL TOTAL ROW */}
+                  <tr className="bg-orange-50/70 border-t-2 border-[#FF5A1F] font-black text-[#071A2B] text-sm">
+                    <td className="p-4 sm:px-6 uppercase tracking-wider text-[#FF5A1F]">
+                      TOTAL
+                    </td>
+                    <td className="p-4 sm:px-6 text-xs text-slate-500 font-normal">
+                      Sum of Transportation + Accommodation + Food + Local transport + Activities + Miscellaneous
+                    </td>
+                    <td className="p-4 sm:px-6 text-right text-[#FF5A1F]">
+                      ₹{Number(smartPlan.perPersonBudget).toLocaleString('en-IN')}
+                    </td>
+                    <td className="p-4 sm:px-6 text-right text-base text-[#FF5A1F]">
+                      ₹{totalCost.toLocaleString('en-IN')}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
 
-            {/* Summary Overview */}
-            <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-6 text-xs">
-              <div>
-                <span className="text-slate-400 font-bold uppercase tracking-wider block">Target User Budget</span>
-                <span className="text-xl font-extrabold text-[#071A2B] mt-1 block">
-                  ₹{Number(smartPlan.userTargetBudget).toLocaleString('en-IN')}
+            {/* Budget vs Estimated Total Comparison Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+              <div data-testid="cost-budget-card" className="p-5 rounded-2xl bg-slate-50 border border-slate-200">
+                <span className="text-xs font-bold text-slate-500 block">
+                  Budget
                 </span>
-                <span className="text-slate-500">
-                  ₹{Number(smartPlan.userPerPersonBudget).toLocaleString('en-IN')}/person ({smartPlan.budgetFlexibility} flexibility)
+                <span className="text-xl font-black text-[#071A2B] mt-1 block">
+                  ₹{userBudget.toLocaleString('en-IN')}
+                </span>
+                <span className="text-[11px] text-slate-500 block mt-0.5">
+                  ₹{Number(smartPlan.userPerPersonBudget).toLocaleString('en-IN')} / person
                 </span>
               </div>
 
-              <div>
-                <span className="text-slate-400 font-bold uppercase tracking-wider block">Calculated Total Cost</span>
+              <div data-testid="cost-estimated-card" className="p-5 rounded-2xl bg-slate-50 border border-slate-200">
+                <span className="text-xs font-bold text-slate-500 block">
+                  Estimated Total
+                </span>
                 <span className="text-xl font-black text-[#FF5A1F] mt-1 block">
-                  ₹{Number(smartPlan.totalBudget).toLocaleString('en-IN')}
+                  ₹{totalCost.toLocaleString('en-IN')}
                 </span>
-                <span className="text-slate-500">
-                  ₹{Number(smartPlan.perPersonBudget).toLocaleString('en-IN')}/person for {smartPlan.travelers} travelers
+                <span className="text-[11px] text-slate-500 block mt-0.5">
+                  ₹{Number(smartPlan.perPersonBudget).toLocaleString('en-IN')} / person
                 </span>
               </div>
 
-              <div>
-                <span className="text-slate-400 font-bold uppercase tracking-wider block">Budget Status</span>
-                <span className={`text-base font-extrabold mt-1 block ${isOverBudget ? 'text-amber-600' : 'text-emerald-600'}`}>
-                  {isOverBudget ? `Over Budget by ₹${shortfallTotal.toLocaleString('en-IN')}` : `Within Budget (₹${Math.max(0, smartPlan.userTargetBudget - smartPlan.totalBudget).toLocaleString('en-IN')} spare)`}
+              <div data-testid="cost-remaining-card" className="p-5 rounded-2xl bg-slate-50 border border-slate-200">
+                <span className="text-xs font-bold text-slate-500 block">
+                  {isOverBudget ? 'Over-budget amount' : 'Remaining budget'}
                 </span>
-                <span className="text-slate-500">
-                  Includes 4% Misc & 6% Emergency Safety Buffer
+                <span
+                  className={`text-xl font-black mt-1 block ${
+                    isOverBudget ? 'text-rose-600' : 'text-emerald-600'
+                  }`}
+                >
+                  {isOverBudget
+                    ? `₹${shortfallTotal.toLocaleString('en-IN')} Shortfall`
+                    : `₹${remainingBudget.toLocaleString('en-IN')} Spare`}
+                </span>
+                <span className="text-[11px] text-slate-500 block mt-0.5">
+                  {isOverBudget
+                    ? `Over budget by ₹${shortfallPerPerson.toLocaleString('en-IN')} / person`
+                    : `Comfortably within entered budget`}
                 </span>
               </div>
             </div>
+
+            <p className="text-[11px] text-slate-400 italic">
+              * Note: All prices shown are realistic estimates calculated from highway toll distances, regional transport tariffs, and verified stay catalogs.
+            </p>
           </div>
         )}
 
-        {/* TAB 3: STAY & ROOM DETAILS */}
+        {/* ================= TAB 3: ACCOMMODATION DETAILS ================= */}
         {activeTab === 'stay' && (
-          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-6">
-            <div>
-              <h3 className="font-extrabold text-xl text-[#071A2B]">Stay & Room Math</h3>
+          <div className="bg-white rounded-3xl p-6 sm:p-10 border border-slate-200 shadow-xl space-y-6">
+            <div className="space-y-1">
+              <h2 className="text-xl font-black text-[#071A2B]">Selected Accommodation</h2>
               <p className="text-xs text-slate-500">
-                Transparent accommodation sizing based on party count (2 adults per room standard).
+                Intelligently chosen to match your party size, duration, and target budget.
               </p>
             </div>
 
             <div className="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden flex flex-col md:flex-row">
-              {/* Stay Image */}
-              <div className="md:w-1/3 h-52 md:h-auto bg-slate-200 relative overflow-hidden">
+              <div className="md:w-1/3 h-56 md:h-auto bg-slate-200 relative overflow-hidden">
                 <img
-                  src={smartPlan.stayRecommendation?.image || 'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=800&q=80'}
+                  src={
+                    smartPlan.stayRecommendation?.image ||
+                    'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=800&q=80'
+                  }
                   alt={smartPlan.stayRecommendation?.name}
                   className="w-full h-full object-cover"
                 />
-                <span className="absolute top-3 left-3 bg-[#071A2B]/80 backdrop-blur-md text-white px-2.5 py-1 rounded-full text-[10px] font-bold">
+                <span className="absolute top-3 left-3 bg-[#071A2B]/85 text-white px-2.5 py-1 rounded-full text-[10px] font-bold">
                   ★ {smartPlan.stayRecommendation?.rating || 4.8} Rating
                 </span>
               </div>
 
-              {/* Stay Content */}
               <div className="p-6 md:w-2/3 space-y-4 flex flex-col justify-between">
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
@@ -625,394 +652,182 @@ export default function PlanResultPage() {
                     </span>
                   </div>
 
-                  <h4 className="text-2xl font-black text-[#071A2B]">
+                  <h3 className="text-2xl font-black text-[#071A2B]">
                     {smartPlan.stayRecommendation?.name}
-                  </h4>
+                  </h3>
 
-                  {/* Room Math Card */}
-                  <div className="p-4 bg-white rounded-xl border border-slate-200 space-y-1 text-xs">
-                    <div className="flex items-center justify-between font-bold text-slate-800">
+                  <div className="p-4 bg-white rounded-xl border border-slate-200 space-y-2 text-xs">
+                    <div className="flex justify-between font-bold text-slate-800">
                       <span>Room Allocation:</span>
                       <span className="text-[#FF5A1F]">
-                        {smartPlan.stayRecommendation?.roomLabel || `${smartPlan.stayRecommendation?.rooms || 1} Rooms for ${smartPlan.travelers} Travelers`}
+                        {smartPlan.stayRecommendation?.roomLabel}
                       </span>
                     </div>
-                    <div className="flex items-center justify-between text-slate-500">
-                      <span>Duration:</span>
+                    <div className="flex justify-between text-slate-500">
+                      <span>Stay Duration:</span>
                       <span>{smartPlan.nights} Nights</span>
                     </div>
-                    <div className="flex items-center justify-between text-slate-500">
-                      <span>Nightly Rate:</span>
+                    <div className="flex justify-between text-slate-500">
+                      <span>Estimated Nightly Rate:</span>
                       <span>{smartPlan.stayRecommendation?.price}</span>
                     </div>
-                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between font-extrabold text-sm text-[#071A2B]">
-                      <span>Total Stay Cost:</span>
+                    <div className="pt-2 border-t border-slate-100 flex justify-between font-black text-sm text-[#071A2B]">
+                      <span>Total Accommodation Cost:</span>
                       <span className="text-emerald-600">
                         ₹{Number(smartPlan.stayRecommendation?.totalPrice || 0).toLocaleString('en-IN')}
                       </span>
                     </div>
                   </div>
-
-                  {/* Amenities */}
-                  <div className="flex flex-wrap gap-1.5 pt-2">
-                    {(smartPlan.stayRecommendation?.amenities || ['Free Wi-Fi', 'Hot Water', 'Scenic Balcony', 'Room Service']).map((amenity, i) => (
-                      <span key={i} className="text-[11px] bg-slate-200/70 text-slate-700 px-2.5 py-0.5 rounded-full font-medium">
-                        ✓ {amenity}
-                      </span>
-                    ))}
-                  </div>
                 </div>
 
-                <div className="pt-4 flex items-center gap-3">
-                  <button
-                    onClick={() => navigate('stays')}
-                    className="btn-primary-cb !py-2.5 !px-6 !text-xs font-bold cursor-pointer"
-                  >
-                    View All Stays in {smartPlan.destinationCity || 'Destination'} →
-                  </button>
+                <div className="flex flex-wrap gap-1.5 pt-2">
+                  {(smartPlan.stayRecommendation?.amenities || []).map((amenity, idx) => (
+                    <span
+                      key={idx}
+                      className="px-2.5 py-1 rounded-full bg-white border border-slate-200 text-slate-600 text-[11px] font-medium"
+                    >
+                      ✓ {amenity}
+                    </span>
+                  ))}
                 </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* TAB 4: TRANSIT ROUTE & OPTIONS */}
+        {/* ================= TAB 4: TRANSIT ROUTE & OPTIONS ================= */}
         {activeTab === 'transport' && (
-          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-6">
-            <div>
-              <h3 className="font-extrabold text-xl text-[#071A2B]">Intercity Route & Transport Options</h3>
+          <div className="bg-white rounded-3xl p-6 sm:p-10 border border-slate-200 shadow-xl space-y-6">
+            <div className="space-y-1">
+              <h2 className="text-xl font-black text-[#071A2B]">Transit Route &amp; Options</h2>
               <p className="text-xs text-slate-500">
-                Calculated for {smartPlan.originCity || 'Origin'} ➔ {smartPlan.destinationCity || 'Destination'} ({smartPlan.distance}).
+                Sensibly evaluated intercity transit options between {smartPlan.originCity} and {smartPlan.destinationCity}.
               </p>
             </div>
 
-            {/* Current Chosen Transit */}
-            <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 space-y-3">
-              <span className="text-[10px] font-bold text-[#FF5A1F] uppercase tracking-wider">
-                Current Selected Transit Mode
-              </span>
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                  <h4 className="text-lg font-black text-[#071A2B]">
-                    {smartPlan.transportRecommendation?.method}
-                  </h4>
-                  <p className="text-xs text-slate-500 mt-1">
-                    {smartPlan.transportRecommendation?.note}
-                  </p>
-                </div>
-                <div className="text-right sm:text-right">
-                  <span className="text-lg font-black text-emerald-600 block">
-                    {smartPlan.transportRecommendation?.costPerPerson}/person
-                  </span>
-                  <span className="text-xs text-slate-400">
-                    Total: ₹{Number(smartPlan.transportRecommendation?.totalCost || 0).toLocaleString('en-IN')} for party
-                  </span>
-                </div>
+            {/* Selected Transit Hero */}
+            <div className="p-5 rounded-2xl bg-orange-50 border border-orange-200 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-[#FF5A1F] uppercase tracking-wider">
+                  Recommended Transit Choice
+                </span>
+                <span className="text-xs font-bold text-slate-600">
+                  {smartPlan.distance}
+                </span>
+              </div>
+              <h3 className="text-lg font-black text-[#071A2B]">
+                {smartPlan.transportRecommendation?.method}
+              </h3>
+              <p className="text-xs text-slate-600">
+                {smartPlan.transportRecommendation?.note}
+              </p>
+              <div className="pt-2 flex items-center justify-between text-xs font-bold text-[#071A2B]">
+                <span>Duration: {smartPlan.transportRecommendation?.duration}</span>
+                <span className="text-emerald-600 text-sm">
+                  {smartPlan.transportRecommendation?.costPerPerson} / person round-trip
+                </span>
               </div>
             </div>
 
-            {/* Compare All Modes Table */}
-            <div className="space-y-3">
-              <h4 className="font-bold text-sm text-[#071A2B]">Compare All Available Transit Modes</h4>
-              <div className="grid grid-cols-1 gap-3">
-                {(smartPlan.allTransportOptions || []).map((opt) => {
-                  const isCurrent = opt.id === (smartPlan.criteria?.intercityTransportPreference?.toLowerCase() || 'train');
-                  return (
-                    <div
-                      key={opt.id}
-                      className={`p-4 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
-                        isCurrent
-                          ? 'bg-orange-50/50 border-[#FF5A1F] ring-1 ring-[#FF5A1F]'
-                          : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
-                      }`}
-                    >
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-extrabold text-xs text-[#071A2B]">{opt.name}</span>
-                          {isCurrent && (
-                            <span className="text-[10px] font-bold bg-[#FF5A1F] text-white px-2 py-0.5 rounded-full">
-                              Active
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-slate-500">{opt.description}</p>
-                        <p className="text-[11px] text-slate-400">Travel Duration: {opt.durationLabel}</p>
-                      </div>
-
-                      <div className="flex items-center gap-4 self-end sm:self-center">
-                        <div className="text-right">
-                          <p className="font-extrabold text-sm text-[#071A2B]">
-                            ₹{opt.costPerPerson.toLocaleString('en-IN')}{' '}
-                            <span className="text-[11px] font-normal text-slate-500">/person</span>
-                          </p>
-                          <p className="text-[10px] text-slate-400">
-                            Total: ₹{opt.totalCost.toLocaleString('en-IN')}
-                          </p>
-                        </div>
-
-                        {!isCurrent && (
-                          <button
-                            onClick={() => handleSwitchTransport(opt.id)}
-                            className="btn-secondary-cb !py-1.5 !px-3 !text-xs font-bold cursor-pointer"
-                          >
-                            Switch Mode
-                          </button>
-                        )}
-                      </div>
+            {/* All Evaluated Options */}
+            <div className="space-y-3 pt-2">
+              <span className="text-xs font-bold text-[#071A2B] block">
+                All Available Intercity Transit Options:
+              </span>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {(smartPlan.allTransportOptions || []).map((opt) => (
+                  <div
+                    key={opt.id}
+                    className="p-4 rounded-2xl border border-slate-200 bg-slate-50 space-y-2 text-xs"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-[#071A2B]">{opt.name}</span>
+                      <span className="text-[11px] font-extrabold text-[#FF5A1F]">
+                        {opt.durationLabel}
+                      </span>
                     </div>
-                  );
-                })}
+                    <p className="text-[11px] text-slate-500">{opt.description}</p>
+                    <div className="flex justify-between items-center pt-2 border-t border-slate-200/60 font-black">
+                      <span className="text-slate-500 text-[11px]">Round-trip cost:</span>
+                      <span className="text-[#071A2B]">
+                        ₹{opt.costPerPerson.toLocaleString('en-IN')} / person
+                      </span>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
         )}
 
-      </div>
+      </main>
 
-      {/* Add Custom Activity Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
-          <div className="bg-[#0C2438] text-white w-full max-w-md rounded-3xl border border-white/15 p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-white/10 pb-3">
-              <h3 className="font-bold text-base text-white">Add Custom Activity</h3>
+      {/* 5. EDIT CONSTRAINTS MODAL */}
+      {showEditModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#071A2B]/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 space-y-6 shadow-2xl border border-slate-100">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <Edit3 className="w-4 h-4 text-[#FF5A1F]" />
+                <h3 className="font-black text-base text-[#071A2B]">Adjust Budget &amp; Travelers</h3>
+              </div>
               <button
                 type="button"
-                onClick={() => setShowAddModal(false)}
-                className="text-slate-400 hover:text-white"
+                onClick={() => setShowEditModal(false)}
+                className="p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 cursor-pointer"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleAddActivitySubmit} className="space-y-3 text-xs">
+            <form onSubmit={handleApplyEditConstraints} className="space-y-4">
               <div>
-                <label className="block text-slate-300 font-medium mb-1">Select Day</label>
-                <select
-                  value={newActivityDay}
-                  onChange={(e) => setNewActivityDay(Number(e.target.value))}
-                  className="w-full bg-[#071A2B] border border-white/15 rounded-xl px-3 py-2 text-white"
-                >
-                  {(smartPlan.dayByDay || []).map((d, i) => (
-                    <option key={i} value={i}>
-                      Day {d.day}: {d.title}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-300 font-medium mb-1">Time</label>
-                  <input
-                    type="text"
-                    value={newActivityTime}
-                    onChange={(e) => setNewActivityTime(e.target.value)}
-                    placeholder="e.g. 03:30 PM"
-                    className="w-full bg-[#071A2B] border border-white/15 rounded-xl px-3 py-2 text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-300 font-medium mb-1">Category</label>
-                  <select
-                    value={newActivityCategory}
-                    onChange={(e) => setNewActivityCategory(e.target.value)}
-                    className="w-full bg-[#071A2B] border border-white/15 rounded-xl px-3 py-2 text-white"
-                  >
-                    <option value="Sightseeing">Sightseeing</option>
-                    <option value="Nature">Nature & Scenic</option>
-                    <option value="Food">Food / Dining</option>
-                    <option value="Culture">Heritage & Temple</option>
-                    <option value="Adventure">Adventure / Sport</option>
-                    <option value="Shopping">Shopping / Bazaar</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-slate-300 font-medium mb-1">Activity Title</label>
-                <input
-                  type="text"
-                  required
-                  value={newActivityTitle}
-                  onChange={(e) => setNewActivityTitle(e.target.value)}
-                  placeholder="e.g. Sunset paragliding over Solang"
-                  className="w-full bg-[#071A2B] border border-white/15 rounded-xl px-3 py-2 text-white"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-300 font-medium mb-1">Estimated Cost Per Person (₹)</label>
+                <label className="text-xs font-bold text-[#071A2B] block mb-1">
+                  Total Budget (₹)
+                </label>
                 <input
                   type="number"
-                  min="0"
-                  value={newActivityCost}
-                  onChange={(e) => setNewActivityCost(e.target.value)}
-                  placeholder="e.g. 250"
-                  className="w-full bg-[#071A2B] border border-white/15 rounded-xl px-3 py-2 text-white"
+                  min="1000"
+                  step="500"
+                  value={editBudget}
+                  onChange={(e) => setEditBudget(e.target.value)}
+                  className="w-full p-3 rounded-2xl border bg-slate-50 border-slate-200 text-sm font-bold text-[#071A2B] focus:outline-none focus:border-[#FF5A1F] focus:bg-white transition-all"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-300 font-medium mb-1">Description (Optional)</label>
+                <label className="text-xs font-bold text-[#071A2B] block mb-1">
+                  Number of Travelers
+                </label>
                 <input
-                  type="text"
-                  value={newActivityDesc}
-                  onChange={(e) => setNewActivityDesc(e.target.value)}
-                  placeholder="e.g. Gliding with certified pilot overlooking Friendship Peak"
-                  className="w-full bg-[#071A2B] border border-white/15 rounded-xl px-3 py-2 text-white"
+                  type="number"
+                  min="1"
+                  max="25"
+                  value={editTravelers}
+                  onChange={(e) => setEditTravelers(e.target.value)}
+                  className="w-full p-3 rounded-2xl border bg-slate-50 border-slate-200 text-sm font-bold text-[#071A2B] focus:outline-none focus:border-[#FF5A1F] focus:bg-white transition-all"
                 />
               </div>
 
               <div className="pt-2 flex items-center justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 rounded-full border border-white/15 text-slate-300 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="btn-primary-cb !py-2 !px-5 font-bold cursor-pointer">
-                  Add Activity
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Constraints Modal */}
-      {showEditModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
-          <div className="bg-[#0C2438] text-white w-full max-w-lg rounded-3xl border border-white/15 p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-white/10 pb-3">
-              <div className="flex items-center gap-2">
-                <Edit3 className="w-4 h-4 text-amber-400" />
-                <h3 className="font-bold text-base text-white">Edit Trip Constraints</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowEditModal(false)}
-                className="text-slate-400 hover:text-white"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleApplyEditConstraints} className="space-y-4 text-xs">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-300 font-medium mb-1">Target Budget (₹)</label>
-                  <input
-                    type="number"
-                    min="1000"
-                    step="500"
-                    value={editBudget}
-                    onChange={(e) => setEditBudget(Number(e.target.value))}
-                    className="w-full bg-[#071A2B] border border-white/15 rounded-xl px-3 py-2 text-white font-bold"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-300 font-medium mb-1">Budget Type</label>
-                  <select
-                    value={editBudgetType}
-                    onChange={(e) => setEditBudgetType(e.target.value)}
-                    className="w-full bg-[#071A2B] border border-white/15 rounded-xl px-3 py-2 text-white"
-                  >
-                    <option value="person">Per Person</option>
-                    <option value="total">Total Trip Budget</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-300 font-medium mb-1">Travelers (Adults)</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="20"
-                    value={editTravelers}
-                    onChange={(e) => setEditTravelers(Number(e.target.value))}
-                    className="w-full bg-[#071A2B] border border-white/15 rounded-xl px-3 py-2 text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-300 font-medium mb-1">Budget Flexibility</label>
-                  <select
-                    value={editFlexibility}
-                    onChange={(e) => setEditFlexibility(e.target.value)}
-                    className="w-full bg-[#071A2B] border border-white/15 rounded-xl px-3 py-2 text-white"
-                  >
-                    <option value="Strict">Strict (0%)</option>
-                    <option value="Moderate">Moderate (10-15%)</option>
-                    <option value="Flexible">Flexible (20-25%)</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-slate-300 font-medium mb-1">Accommodation Tier</label>
-                <select
-                  value={editAccom}
-                  onChange={(e) => setEditAccom(e.target.value)}
-                  className="w-full bg-[#071A2B] border border-white/15 rounded-xl px-3 py-2 text-white"
-                >
-                  <option value="Hostel">Backpacker Hostel (₹650/bed)</option>
-                  <option value="Budget Hotel">Budget Hotel (₹1,600/room)</option>
-                  <option value="Hotel">Boutique Hotel 3★ (₹3,200/room)</option>
-                  <option value="Homestay">Local Homestay (₹2,400/room)</option>
-                  <option value="Resort">Nature / Valley Resort (₹5,800/room)</option>
-                  <option value="Premium">Premium 5★ Luxury (₹8,500/room)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-slate-300 font-medium mb-1">Intercity Transport</label>
-                <select
-                  value={editTransport}
-                  onChange={(e) => setEditTransport(e.target.value)}
-                  className="w-full bg-[#071A2B] border border-white/15 rounded-xl px-3 py-2 text-white"
-                >
-                  <option value="Cheapest available">Cheapest Available</option>
-                  <option value="Fastest">Fastest Available</option>
-                  <option value="Train">Train (Express / AC 3-Tier)</option>
-                  <option value="Bus">AC Volvo / Multi-Axle Bus</option>
-                  <option value="Car">Personal Car / Self-Drive</option>
-                  <option value="Cab">Dedicated Private Cab</option>
-                  <option value="Flight">Domestic Flight</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-slate-300 font-medium mb-1">Daily Pace & Intensity</label>
-                <select
-                  value={editIntensity}
-                  onChange={(e) => setEditIntensity(e.target.value)}
-                  className="w-full bg-[#071A2B] border border-white/15 rounded-xl px-3 py-2 text-white"
-                >
-                  <option value="Relaxed">Relaxed (1–2 stops/day)</option>
-                  <option value="Balanced">Balanced (2–3 stops/day)</option>
-                  <option value="Packed">Packed / Fast-Paced (3–4 stops/day)</option>
-                </select>
-              </div>
-
-              <div className="pt-2 flex items-center justify-end gap-2 border-t border-white/10">
-                <button
-                  type="button"
                   onClick={() => setShowEditModal(false)}
-                  className="px-4 py-2 rounded-full border border-white/15 text-slate-300 cursor-pointer"
+                  className="btn-secondary-cb !py-2.5 !px-4 !text-xs font-bold cursor-pointer"
                 >
                   Cancel
                 </button>
-                <button type="submit" className="btn-primary-cb !py-2 !px-5 font-bold cursor-pointer">
-                  Recalculate Plan →
+                <button
+                  type="submit"
+                  className="btn-primary-cb !py-2.5 !px-6 !text-xs font-bold cursor-pointer"
+                >
+                  Recalculate Plan
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
-
     </div>
   );
 }

@@ -22,6 +22,8 @@ export default function SupportTicketModal() {
       return;
     }
 
+    if (isSubmitting) return;
+
     try {
       setIsSubmitting(true);
       const res = await api.createTicket({
@@ -39,10 +41,10 @@ export default function SupportTicketModal() {
         addToast(`Ticket #${res.ticketNumber} created successfully! Our team will reply shortly.`, 'success');
         setSupportModalData(null);
       } else {
-        addToast(res.error || 'Failed to submit ticket', 'error');
+        addToast(res.error || 'We couldn\'t complete this request right now. Please try again in a few moments.', 'error');
       }
     } catch (err) {
-      addToast('Error submitting support ticket', 'error');
+      addToast('Something went wrong. Please check your connection and try again.', 'error');
     } finally {
       setIsSubmitting(false);
     }

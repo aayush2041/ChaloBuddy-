@@ -5,6 +5,7 @@ import {
   Star,
   CheckCircle2,
   ShieldCheck,
+  Loader2,
 } from 'lucide-react';
 
 export default function WriteReviewModal() {
@@ -15,19 +16,26 @@ export default function WriteReviewModal() {
   const [stayRating, setStayRating] = useState(5);
   const [valueRating, setValueRating] = useState(5);
   const [comment, setComment] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!writeReviewModalData) return null;
   const target = writeReviewModalData;
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
+
     if (!comment.trim()) {
       addToast('Please write a short review sharing your experience', 'error');
       return;
     }
 
-    addToast('Thank you! Your verified review has been submitted and posted.', 'success');
-    setWriteReviewModalData(null);
+    setIsSubmitting(true);
+    setTimeout(() => {
+      addToast('Thank you! Your verified review has been submitted and posted.', 'success');
+      setIsSubmitting(false);
+      setWriteReviewModalData(null);
+    }, 400);
   };
 
   return (
@@ -150,9 +158,17 @@ export default function WriteReviewModal() {
             </button>
             <button
               type="submit"
-              className="btn-primary-cb !py-2.5 !px-6 font-bold cursor-pointer"
+              disabled={isSubmitting}
+              className="btn-primary-cb !py-2.5 !px-6 font-bold cursor-pointer disabled:opacity-50 flex items-center gap-2"
             >
-              Submit Review ⭐
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Submitting Review...</span>
+                </>
+              ) : (
+                <span>Submit Review ⭐</span>
+              )}
             </button>
           </div>
         </form>

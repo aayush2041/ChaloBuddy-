@@ -9,6 +9,8 @@ import {
   ArrowRight,
   ShieldCheck,
   CheckCircle2,
+  AlertCircle,
+  Loader2,
 } from 'lucide-react';
 
 export default function AuthModal() {
@@ -25,21 +27,48 @@ export default function AuthModal() {
   const [email, setEmail] = useState('priya.patel@chalobuddy.com');
   const [password, setPassword] = useState('password123');
   const [name, setName] = useState('Priya Patel');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState('');
 
   if (!authModalOpen) return null;
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    loginUser(email, password);
+    if (isSubmitting) return;
+
+    if (authModalMode === 'signup' && !name.trim()) {
+      setFormError('Please enter your full name.');
+      return;
+    }
+    if (!email.trim() || !email.includes('@')) {
+      setFormError('Please enter a valid email address.');
+      return;
+    }
+    if (!password.trim() || password.length < 6) {
+      setFormError('Password must be at least 6 characters.');
+      return;
+    }
+
+    setFormError('');
+    setIsSubmitting(true);
+    setTimeout(() => {
+      loginUser(email, password);
+      setIsSubmitting(false);
+    }, 400);
   };
 
   const handleGoogleLogin = () => {
-    loginUser('google.traveler@chalobuddy.com', 'google_pass');
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    setTimeout(() => {
+      loginUser('google.traveler@chalobuddy.com', 'google_pass');
+      setIsSubmitting(false);
+    }, 400);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
-      <div className="bg-[#0C2438] text-white w-full max-w-md rounded-3xl border border-white/15 shadow-2xl overflow-hidden p-6 space-y-5">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-sm animate-fade-in overflow-y-auto">
+      <div className="bg-[#0C2438] text-white w-full max-w-md rounded-3xl border border-white/15 shadow-2xl p-5 sm:p-6 space-y-4 sm:space-y-5 my-auto max-h-[92vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-white/10">
           <div className="flex items-center gap-2.5">
@@ -185,12 +214,29 @@ export default function AuthModal() {
             </div>
           </div>
 
+          {formError && (
+            <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+              <span>{formError}</span>
+            </div>
+          )}
+
           <button
             type="submit"
-            className="w-full btn-primary-cb !py-2.5 !text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer mt-2"
+            disabled={isSubmitting}
+            className="w-full btn-primary-cb !py-2.5 !text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer mt-2 disabled:opacity-50"
           >
-            <span>{authModalMode === 'login' ? 'Sign In to ChaloBuddy' : 'Create Account'}</span>
-            <ArrowRight className="w-3.5 h-3.5" />
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>{authModalMode === 'login' ? 'Signing In...' : 'Creating Account...'}</span>
+              </>
+            ) : (
+              <>
+                <span>{authModalMode === 'login' ? 'Sign In to ChaloBuddy' : 'Create Account'}</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </>
+            )}
           </button>
         </form>
 
@@ -201,7 +247,10 @@ export default function AuthModal() {
               Don't have an account?{' '}
               <button
                 type="button"
-                onClick={() => setAuthModalMode('signup')}
+                onClick={() => {
+                  setAuthModalMode('signup');
+                  setFormError('');
+                }}
                 className="text-[#FF5A1F] font-bold hover:underline cursor-pointer"
               >
                 Sign up free
@@ -212,7 +261,10 @@ export default function AuthModal() {
               Already have an account?{' '}
               <button
                 type="button"
-                onClick={() => setAuthModalMode('login')}
+                onClick={() => {
+                  setAuthModalMode('login');
+                  setFormError('');
+                }}
                 className="text-[#FF5A1F] font-bold hover:underline cursor-pointer"
               >
                 Sign in

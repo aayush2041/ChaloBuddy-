@@ -1,42 +1,63 @@
 // Deterministic Budget Calculation and Constraint Validation Engine
+// Follows strict 6-category allocation:
+// 1. Transportation
+// 2. Accommodation
+// 3. Food
+// 4. Local transport
+// 5. Activities
+// 6. Miscellaneous
+// ----------------
+// TOTAL (mathematically exact sum of the 6 components)
 
 export function calculateLocalTransportCost({
-  preference = 'Cab',
+  preference = 'Mixed',
   days = 3,
   travelers = 2,
+  isInternational = false,
 }) {
   const pref = String(preference).toLowerCase();
   const dayCount = Math.max(1, Number(days) || 1);
   const travelerCount = Math.max(1, Number(travelers) || 1);
 
-  let dailyRate = 900;
+  let dailyRate = 700;
   let label = 'Local Cabs & Auto-rickshaws';
   let isPerPerson = false;
 
-  if (pref.includes('bike') || pref.includes('scooter')) {
-    // 1 bike per 2 travelers
-    const bikes = Math.ceil(travelerCount / 2);
-    dailyRate = 500 * bikes;
-    label = `${bikes} Rental Scooter/Bike${bikes > 1 ? 's' : ''} (₹500/day/bike)`;
-  } else if (pref.includes('rental car') || pref.includes('car')) {
-    dailyRate = 1800; // car rental per day
-    label = 'Local Self-Drive Car Rental (₹1,800/day)';
-  } else if (pref.includes('public transport') || pref.includes('metro') || pref.includes('bus')) {
-    dailyRate = 150;
-    isPerPerson = true;
-    label = 'Public Transport & City Bus Passes (₹150/person/day)';
-  } else if (pref.includes('walk')) {
-    dailyRate = 80;
-    isPerPerson = true;
-    label = 'Walking + Short Auto Hops (₹80/person/day)';
-  } else if (pref.includes('mixed')) {
-    dailyRate = 350;
-    isPerPerson = true;
-    label = 'Mixed Transit (Shared Cabs, Autos & Walks)';
+  if (isInternational) {
+    if (pref.includes('public') || pref.includes('metro') || pref.includes('bus')) {
+      dailyRate = 600;
+      isPerPerson = true;
+      label = 'Metro & City Transit Day Passes (₹600/person/day)';
+    } else {
+      dailyRate = 1200;
+      isPerPerson = true;
+      label = 'City Metro + Rideshare & Taxis (₹1,200/person/day)';
+    }
   } else {
-    // Dedicated Cab
-    dailyRate = 900;
-    label = 'On-Demand Local Cabs & Autos (₹900/day)';
+    if (pref.includes('bike') || pref.includes('scooter')) {
+      const bikes = Math.ceil(travelerCount / 2);
+      dailyRate = 450 * bikes;
+      label = `${bikes} Rental Scooter/Bike${bikes > 1 ? 's' : ''} (₹450/day/bike)`;
+    } else if (pref.includes('rental car') || pref.includes('car')) {
+      dailyRate = 1800;
+      label = 'Local Self-Drive Car Rental (₹1,800/day)';
+    } else if (pref.includes('public transport') || pref.includes('metro') || pref.includes('bus')) {
+      dailyRate = 150;
+      isPerPerson = true;
+      label = 'Public Transport & City Bus Passes (₹150/person/day)';
+    } else if (pref.includes('walk')) {
+      dailyRate = 80;
+      isPerPerson = true;
+      label = 'Walking + Short Auto Hops (₹80/person/day)';
+    } else if (pref.includes('mixed')) {
+      dailyRate = 300;
+      isPerPerson = true;
+      label = 'Mixed Transit (Shared Cabs, Autos & Short Walks)';
+    } else {
+      // Dedicated Cab
+      dailyRate = 850;
+      label = 'On-Demand Local Cabs & Autos (₹850/day)';
+    }
   }
 
   const totalCost = isPerPerson
@@ -54,140 +75,143 @@ export function calculateLocalTransportCost({
 }
 
 export function buildCompleteBudget({
-  transportCost,
-  stayCost,
-  foodCost,
-  localTransportCost,
-  activitiesCost,
+  transportCost = 0,
+  stayCost = 0,
+  foodCost = 0,
+  localTransportCost = 0,
+  activitiesCost = 0,
+  miscCost = null,
   travelers = 2,
   userBudget = 15000,
-  budgetType = 'person', // 'person' | 'total'
-  budgetFlexibility = 'Moderate', // 'Strict' | 'Moderate' | 'Flexible'
+  budgetType = 'total', // 'total' is default source of truth
 }) {
   const travelerCount = Math.max(1, Number(travelers) || 1);
 
-  // Core expenditure subtotal
-  const directExpenses =
-    transportCost + stayCost + foodCost + localTransportCost + activitiesCost;
+  // 1. Direct Core Expenses
+  const tCost = Math.round(Number(transportCost) || 0);
+  const sCost = Math.round(Number(stayCost) || 0);
+  const fCost = Math.round(Number(foodCost) || 0);
+  const lCost = Math.round(Number(localTransportCost) || 0);
+  const aCost = Math.round(Number(activitiesCost) || 0);
 
-  // Miscellaneous: ~4% for water, snacks, entry permits, porter tips
-  const miscCost = Math.round(directExpenses * 0.04);
+  // 2. Miscellaneous Expenses (bottled water, entry permits, light snacks, tips)
+  // ~4% of direct expenses or minimum ₹150/person/day
+  const subtotal = tCost + sCost + fCost + lCost + aCost;
+  const computedMisc = miscCost !== null
+    ? Math.round(Number(miscCost) || 0)
+    : Math.max(200, Math.round(subtotal * 0.04));
 
-  // Emergency Safety Buffer: ~6% for medical, contingencies, local price variations
-  const bufferCost = Math.round(directExpenses * 0.06);
-
-  const totalCalculatedCost = directExpenses + miscCost + bufferCost;
+  // 3. Mathematically Exact Total:
+  // TOTAL = Transportation + Accommodation + Food + Local transport + Activities + Miscellaneous
+  const totalCalculatedCost = tCost + sCost + fCost + lCost + aCost + computedMisc;
   const perPersonCost = Math.round(totalCalculatedCost / travelerCount);
 
-  // User Target Budget Normalization
-  const rawBudget = Number(userBudget) || 15000;
+  // 4. User Target Budget Normalization
+  const rawBudget = Math.round(Number(userBudget) || 15000);
   const userTotalBudget = budgetType === 'person' ? rawBudget * travelerCount : rawBudget;
   const userPerPersonBudget = Math.round(userTotalBudget / travelerCount);
 
-  // Flexibility thresholds
-  let allowedFlexibility = 0.15; // Moderate: 15%
-  const flexLower = String(budgetFlexibility).toLowerCase();
-  if (flexLower.includes('strict')) allowedFlexibility = 0.02; // Strict: 2%
-  else if (flexLower.includes('flex')) allowedFlexibility = 0.25; // Flexible: 25%
-
-  const maxAllowedBudget = Math.round(userTotalBudget * (1 + allowedFlexibility));
-  const isOverBudget = totalCalculatedCost > maxAllowedBudget;
+  // 5. Budget Status: User entered budget is the source of truth!
+  const isOverBudget = totalCalculatedCost > userTotalBudget;
   const shortfallTotal = Math.max(0, totalCalculatedCost - userTotalBudget);
   const shortfallPerPerson = Math.round(shortfallTotal / travelerCount);
+  const remainingBudget = Math.max(0, userTotalBudget - totalCalculatedCost);
+  const percentUsed = userTotalBudget > 0 ? Math.round((totalCalculatedCost / userTotalBudget) * 100) : 100;
 
-  const percentUsed = Math.min(100, Math.round((totalCalculatedCost / userTotalBudget) * 100));
-
-  // Category breakdown for UI table and charts
+  // 6. Strict 6-Category Breakdown
   const breakdown = [
     {
       key: 'transport',
-      category: 'Intercity Transport',
-      amount: transportCost,
-      perPerson: Math.round(transportCost / travelerCount),
-      percentage: Math.round((transportCost / totalCalculatedCost) * 100),
+      category: 'Transportation',
+      label: 'Intercity Transport',
+      amount: tCost,
+      perPerson: Math.round(tCost / travelerCount),
+      percentage: totalCalculatedCost > 0 ? Math.round((tCost / totalCalculatedCost) * 100) : 0,
       icon: 'Route',
     },
     {
       key: 'stay',
       category: 'Accommodation',
-      amount: stayCost,
-      perPerson: Math.round(stayCost / travelerCount),
-      percentage: Math.round((stayCost / totalCalculatedCost) * 100),
+      label: 'Hotel / Homestay / Resort',
+      amount: sCost,
+      perPerson: Math.round(sCost / travelerCount),
+      percentage: totalCalculatedCost > 0 ? Math.round((sCost / totalCalculatedCost) * 100) : 0,
       icon: 'BedDouble',
     },
     {
       key: 'food',
-      category: 'Food & Meals',
-      amount: foodCost,
-      perPerson: Math.round(foodCost / travelerCount),
-      percentage: Math.round((foodCost / totalCalculatedCost) * 100),
+      category: 'Food',
+      label: 'Daily Breakfast, Lunch & Dinner',
+      amount: fCost,
+      perPerson: Math.round(fCost / travelerCount),
+      percentage: totalCalculatedCost > 0 ? Math.round((fCost / totalCalculatedCost) * 100) : 0,
       icon: 'Utensils',
     },
     {
       key: 'localTransport',
-      category: 'Local Commute',
-      amount: localTransportCost,
-      perPerson: Math.round(localTransportCost / travelerCount),
-      percentage: Math.round((localTransportCost / totalCalculatedCost) * 100),
+      category: 'Local transport',
+      label: 'Local Commute & Transfers',
+      amount: lCost,
+      perPerson: Math.round(lCost / travelerCount),
+      percentage: totalCalculatedCost > 0 ? Math.round((lCost / totalCalculatedCost) * 100) : 0,
       icon: 'Car',
     },
     {
       key: 'activities',
-      category: 'Activities & Entry Fees',
-      amount: activitiesCost,
-      perPerson: Math.round(activitiesCost / travelerCount),
-      percentage: Math.round((activitiesCost / totalCalculatedCost) * 100),
+      category: 'Activities',
+      label: 'Sightseeing & Entry Passes',
+      amount: aCost,
+      perPerson: Math.round(aCost / travelerCount),
+      percentage: totalCalculatedCost > 0 ? Math.round((aCost / totalCalculatedCost) * 100) : 0,
       icon: 'Compass',
     },
     {
       key: 'misc',
-      category: 'Miscellaneous & Snacks',
-      amount: miscCost,
-      perPerson: Math.round(miscCost / travelerCount),
-      percentage: Math.round((miscCost / totalCalculatedCost) * 100),
+      category: 'Miscellaneous',
+      label: 'Water, Snacks & Contingency',
+      amount: computedMisc,
+      perPerson: Math.round(computedMisc / travelerCount),
+      percentage: totalCalculatedCost > 0 ? Math.round((computedMisc / totalCalculatedCost) * 100) : 0,
       icon: 'Wallet',
-    },
-    {
-      key: 'buffer',
-      category: 'Emergency Safety Buffer',
-      amount: bufferCost,
-      perPerson: Math.round(bufferCost / travelerCount),
-      percentage: Math.round((bufferCost / totalCalculatedCost) * 100),
-      icon: 'ShieldCheck',
     },
   ];
 
   // Specific actionable recommendations if over budget
-  const budgetWarnings = [];
+  const warnings = [];
   if (isOverBudget) {
-    budgetWarnings.push({
+    warnings.push({
       type: 'warning',
-      title: 'Estimated Trip Cost Exceeds Your Target Budget',
+      title: 'Trip is unlikely to fit within budget',
       shortfallTotal,
       shortfallPerPerson,
-      message: `Realistic estimated cost is ₹${totalCalculatedCost.toLocaleString('en-IN')} (₹${perPersonCost.toLocaleString('en-IN')}/person), while your budget is ₹${userTotalBudget.toLocaleString('en-IN')} (₹${userPerPersonBudget.toLocaleString('en-IN')}/person). Shortfall: ₹${shortfallPerPerson.toLocaleString('en-IN')}/person.`,
+      message: `This trip is unlikely to fit within ₹${userTotalBudget.toLocaleString('en-IN')} for ${travelerCount} ${travelerCount === 1 ? 'person' : 'people'}.`,
       suggestions: [
-        'Switch to Train or Volvo Bus to save on intercity transit.',
-        'Choose a Homestay or Budget Hotel instead of premium resort rooms.',
-        'Consider rental bikes or public transport instead of private cabs.',
-        `Increase budget to ₹${perPersonCost.toLocaleString('en-IN')}/person to keep current preferences.`,
+        'Reduce number of days to cut accommodation and daily meal costs.',
+        `Increase budget to at least ₹${totalCalculatedCost.toLocaleString('en-IN')} to cover realistic expenses.`,
+        'Choose cheaper transport (e.g. Sleeper Train or AC Bus instead of Flights/Private Cabs).',
+        'Choose cheaper accommodation (e.g. Hostels or Budget Homestays instead of Hotels).',
       ],
     });
   }
 
   return {
+    transportCost: tCost,
+    stayCost: sCost,
+    foodCost: fCost,
+    localTransportCost: lCost,
+    activitiesCost: aCost,
+    miscCost: computedMisc,
     totalCost: totalCalculatedCost,
     perPersonCost,
     userTotalBudget,
     userPerPersonBudget,
     budgetType,
-    budgetFlexibility,
     isOverBudget,
     shortfallTotal,
     shortfallPerPerson,
+    remainingBudget,
     percentUsed,
-    remainingBudget: Math.max(0, userTotalBudget - totalCalculatedCost),
     breakdown,
-    warnings: budgetWarnings,
+    warnings,
   };
 }

@@ -296,6 +296,17 @@ export default function StaysPage() {
                   <Home className="w-10 h-10 text-[#FF5A1F] mx-auto" />
                   <h3 className="font-bold text-base text-[#071A2B]">No stays found</h3>
                   <p className="text-xs text-slate-500">Try changing your price range or destination keywords.</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDestination('');
+                      setMaxPrice(15000);
+                      setSelectedLocation(null);
+                    }}
+                    className="btn-primary-cb !py-2 !px-5 !text-xs font-semibold cursor-pointer"
+                  >
+                    Reset Filters
+                  </button>
                 </div>
               ) : (
                 filteredStays.map((stay) => {
@@ -323,6 +334,17 @@ export default function StaysPage() {
                 <Home className="w-10 h-10 text-[#FF5A1F] mx-auto" />
                 <h3 className="font-bold text-base text-[#071A2B]">No stays found</h3>
                 <p className="text-xs text-slate-500">Try changing your price range or destination keywords.</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDestination('');
+                    setMaxPrice(15000);
+                    setSelectedLocation(null);
+                  }}
+                  className="btn-primary-cb !py-2 !px-5 !text-xs font-semibold cursor-pointer"
+                >
+                  Reset Filters
+                </button>
               </div>
             ) : (
               <div className="space-y-8">

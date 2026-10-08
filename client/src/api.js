@@ -17,23 +17,40 @@ const getAuthHeaders = () => {
   return {};
 };
 
-const authFetch = async (url, options = {}) => {
-  const headers = {
-    ...getAuthHeaders(),
-    ...(options.headers || {})
-  };
-  const res = await fetch(`${API_BASE}${url}`, {
-    ...options,
-    headers
-  });
-  return res.json();
+const safeFetch = async (url, options = {}, requiresAuth = false) => {
+  try {
+    const headers = {
+      ...(requiresAuth ? getAuthHeaders() : {}),
+      ...(options.headers || {}),
+    };
+    const res = await fetch(`${API_BASE}${url}`, {
+      ...options,
+      headers,
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) {
+      return {
+        success: false,
+        error: data?.error || 'We couldn\'t complete this request right now. Please try again in a few moments.',
+        status: res.status,
+      };
+    }
+    return data !== null ? data : { success: true };
+  } catch (err) {
+    return {
+      success: false,
+      error: 'Something went wrong. Please check your connection and try again.',
+    };
+  }
 };
+
+const authFetch = (url, options = {}) => safeFetch(url, options, true);
+const publicFetch = (url, options = {}) => safeFetch(url, options, false);
 
 export const api = {
   // Settings
   getSettings: async () => {
-    const res = await fetch(`${API_BASE}/settings`);
-    return res.json();
+    return publicFetch('/settings');
   },
   updateSettings: async (settings, updatedBy = 'Admin') => {
     return authFetch('/settings', {
@@ -52,38 +69,33 @@ export const api = {
 
   // Auth
   login: async (email, password) => {
-    const res = await fetch(`${API_BASE}/auth/login`, {
+    return publicFetch('/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
     });
-    return res.json();
   },
   register: async (name, email, phone, password) => {
-    const res = await fetch(`${API_BASE}/auth/register`, {
+    return publicFetch('/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, email, phone, password })
     });
-    return res.json();
   },
 
   // Categories & Products
   getCategories: async () => {
-    const res = await fetch(`${API_BASE}/categories`);
-    return res.json();
+    return publicFetch('/categories');
   },
   getProducts: async (filters = {}) => {
     const query = new URLSearchParams();
     Object.entries(filters).forEach(([k, v]) => {
       if (v !== undefined && v !== null && v !== '') query.append(k, v);
     });
-    const res = await fetch(`${API_BASE}/products?${query.toString()}`);
-    return res.json();
+    return publicFetch(`/products?${query.toString()}`);
   },
   getProductByIdOrSlug: async (idOrSlug) => {
-    const res = await fetch(`${API_BASE}/products/${idOrSlug}`);
-    return res.json();
+    return publicFetch(`/products/${idOrSlug}`);
   },
   createProduct: async (productData) => {
     return authFetch('/products', {
@@ -256,17 +268,15 @@ export const api = {
 
   // Support Tickets
   createTicket: async (ticketData) => {
-    const res = await fetch(`${API_BASE}/tickets`, {
+    return publicFetch('/tickets', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(ticketData)
     });
-    return res.json();
   },
   getTickets: async (filters = {}) => {
     const query = new URLSearchParams(filters);
-    const res = await fetch(`${API_BASE}/tickets?${query.toString()}`);
-    return res.json();
+    return publicFetch(`/tickets?${query.toString()}`);
   },
   getAllTickets: async (filters = {}) => {
     const query = new URLSearchParams(filters);
@@ -282,16 +292,14 @@ export const api = {
 
   // Reviews
   getReviews: async (productId) => {
-    const res = await fetch(`${API_BASE}/reviews${productId ? `?product_id=${productId}` : ''}`);
-    return res.json();
+    return publicFetch(`/reviews${productId ? `?product_id=${productId}` : ''}`);
   },
   createReview: async (reviewData) => {
-    const res = await fetch(`${API_BASE}/reviews`, {
+    return publicFetch('/reviews', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(reviewData)
     });
-    return res.json();
   },
 
   // Admin Stats & Audit Logs

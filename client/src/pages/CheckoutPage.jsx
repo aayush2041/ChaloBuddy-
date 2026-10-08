@@ -71,6 +71,8 @@ export default function CheckoutPage() {
       return;
     }
 
+    if (isSubmitting) return;
+
     try {
       setIsSubmitting(true);
       const itemsPayload = cart.map((i) => ({
@@ -96,10 +98,10 @@ export default function CheckoutPage() {
           total: res.order.total_amount
         });
       } else {
-        showToast?.(res.error || 'Failed to initialize order', 'error');
+        showToast?.(res.error || 'We couldn\'t complete this request right now. Please try again in a few moments.', 'error');
       }
     } catch {
-      showToast?.('Network error initializing order', 'error');
+      showToast?.('Something went wrong. Please check your connection and try again.', 'error');
     } finally {
       setIsSubmitting(false);
     }

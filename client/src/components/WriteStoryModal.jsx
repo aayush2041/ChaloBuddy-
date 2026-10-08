@@ -7,6 +7,7 @@ import {
   Sparkles,
   MapPin,
   CheckCircle2,
+  Loader2,
 } from 'lucide-react';
 
 export default function WriteStoryModal() {
@@ -20,6 +21,7 @@ export default function WriteStoryModal() {
   const [selectedImage, setSelectedImage] = useState(
     'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1000&q=80'
   );
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!writeStoryModalOpen) return null;
 
@@ -32,19 +34,29 @@ export default function WriteStoryModal() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
+
     if (!title.trim() || !body.trim() || !location.trim()) {
       addToast('Please fill in title, destination, and your story narrative', 'error');
       return;
     }
 
-    addStory({
-      title,
-      location,
-      quote: quote || title,
-      body,
-      rating,
-      image: selectedImage,
-    });
+    setIsSubmitting(true);
+    setTimeout(() => {
+      addStory({
+        title: title.trim(),
+        location: location.trim(),
+        quote: quote.trim() || title.trim(),
+        body: body.trim(),
+        rating,
+        image: selectedImage,
+      });
+      setIsSubmitting(false);
+      setTitle('');
+      setLocation('');
+      setQuote('');
+      setBody('');
+    }, 400);
   };
 
   return (
@@ -174,9 +186,17 @@ export default function WriteStoryModal() {
             </button>
             <button
               type="submit"
-              className="btn-primary-cb !py-2.5 !px-6 font-bold cursor-pointer"
+              disabled={isSubmitting}
+              className="btn-primary-cb !py-2.5 !px-6 font-bold cursor-pointer disabled:opacity-50 flex items-center gap-2"
             >
-              Publish Story 🚀
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Publishing Story...</span>
+                </>
+              ) : (
+                <span>Publish Story 🚀</span>
+              )}
             </button>
           </div>
         </form>

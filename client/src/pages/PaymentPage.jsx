@@ -104,6 +104,8 @@ export default function PaymentPage() {
       return;
     }
 
+    if (isSubmitting) return;
+
     try {
       setIsSubmitting(true);
       const formData = new FormData();
@@ -119,10 +121,10 @@ export default function PaymentPage() {
         showToast?.('Payment proof submitted successfully!', 'success');
         navigate('orders', { id: order.order_number });
       } else {
-        showToast?.(res.error || 'Failed to submit payment proof', 'error');
+        showToast?.(res.error || 'We couldn\'t complete this request right now. Please try again in a few moments.', 'error');
       }
     } catch {
-      showToast?.('Network error submitting payment proof', 'error');
+      showToast?.('Something went wrong. Please check your connection and try again.', 'error');
     } finally {
       setIsSubmitting(false);
     }

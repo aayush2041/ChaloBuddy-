@@ -41,7 +41,7 @@ export default function App() {
   // Listen to browser hash changes for back/forward navigation and deep links
   useEffect(() => {
     const handleHashChange = () => {
-      const hash = window.location.hash.replace(/^#\/?/, '');
+      const hash = window.location.hash.replace(/^#+[\/]?/, '');
       if (!hash) {
         navigate('home');
         return;
@@ -132,7 +132,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F5F7F8] text-[#071A2B] flex flex-col font-sans selection:bg-[#FF5A1F] selection:text-white pb-14 lg:pb-0">
+    <div className="min-h-screen bg-[#F5F7F8] text-[#071A2B] flex flex-col font-sans selection:bg-[#FF5A1F] selection:text-white pb-16 md:pb-0">
       {/* Global Navbar */}
       <Navbar />
 

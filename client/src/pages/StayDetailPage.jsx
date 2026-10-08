@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useStore } from '../context/StoreContext';
 import GoogleMapsView from '../components/GoogleMapsView';
-import DatePicker from '../components/DatePicker';
+import DatePicker, { parseDate } from '../components/DatePicker';
 import {
   MapPin,
   Star,
@@ -39,6 +39,7 @@ export default function StayDetailPage() {
   const [checkIn, setCheckIn] = useState('15 Nov 2026');
   const [checkOut, setCheckOut] = useState('18 Nov 2026');
   const [guestCount, setGuestCount] = useState(2);
+  const datePickerRef = useRef(null);
 
   const saved = isStaySaved(stay.id);
 
@@ -48,11 +49,11 @@ export default function StayDetailPage() {
 
   const selectedRoom = rooms.find((r) => r.id === selectedRoomId) || rooms[0];
 
-  // Calculate nights dynamically
-  const sDate = new Date(checkIn);
-  const eDate = new Date(checkOut);
-  const diffTime = eDate - sDate;
-  const nights = !isNaN(diffTime) && diffTime > 0 ? Math.ceil(diffTime / (1000 * 60 * 60 * 24)) : 3;
+  // Calculate nights dynamically without UTC timezone drift
+  const sDate = parseDate(checkIn);
+  const eDate = parseDate(checkOut);
+  const diffTime = sDate && eDate ? eDate.getTime() - sDate.getTime() : 0;
+  const nights = !isNaN(diffTime) && diffTime > 0 ? Math.max(1, Math.round(diffTime / (1000 * 60 * 60 * 24))) : 3;
   const subtotal = selectedRoom.price * nights;
   const serviceFee = Math.round(subtotal * 0.08);
   const totalAmount = subtotal + serviceFee;
@@ -305,20 +306,26 @@ export default function StayDetailPage() {
               <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/60 space-y-3 text-xs">
                 <div>
                   <label className="text-slate-500 text-[10px] uppercase font-bold block mb-1">Check-in — Check-out</label>
-                  <div className="bg-white border border-slate-200 rounded-xl px-3 py-1.5 focus-within:border-[#FF5A1F]">
-                    <DatePicker
-                      mode="range"
-                      theme="light"
-                      label=""
-                      placeholder="Select dates"
-                      value={{ start: checkIn, end: checkOut }}
-                      onChange={(dates) => {
-                        if (dates?.start && dates?.end) {
-                          setCheckIn(dates.start);
-                          setCheckOut(dates.end);
-                        }
-                      }}
-                    />
+                  <div
+                    className="bg-white border border-slate-200 rounded-xl px-3 py-1.5 focus-within:border-[#FF5A1F] cursor-pointer"
+                    onClick={() => datePickerRef.current?.open()}
+                  >
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <DatePicker
+                        ref={datePickerRef}
+                        mode="range"
+                        theme="light"
+                        label=""
+                        placeholder="Select dates"
+                        value={{ start: checkIn, end: checkOut }}
+                        onChange={(dates) => {
+                          if (dates?.start && dates?.end) {
+                            setCheckIn(dates.start);
+                            setCheckOut(dates.end);
+                          }
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -369,6 +376,24 @@ export default function StayDetailPage() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Mobile Sticky Reservation Bar */}
+      <div className="lg:hidden fixed bottom-[52px] left-0 right-0 z-30 bg-[#071A2B]/95 backdrop-blur-xl border-t border-white/10 px-4 py-2.5 flex items-center justify-between shadow-2xl">
+        <div>
+          <span className="text-[10px] text-slate-400 block uppercase font-bold">Total ({nights} nights)</span>
+          <div className="flex items-baseline gap-1">
+            <span className="text-base font-black text-white">{formatPrice(totalAmount)}</span>
+            <span className="text-[10px] text-slate-400">incl. taxes</span>
+          </div>
+        </div>
+        <button
+          onClick={handleOpenReserveModal}
+          className="btn-primary-cb !py-2.5 !px-5 !text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-md shadow-[#FF5A1F]/30"
+        >
+          <span>Reserve</span>
+          <ArrowRight className="w-3.5 h-3.5" />
+        </button>
       </div>
     </div>
   );

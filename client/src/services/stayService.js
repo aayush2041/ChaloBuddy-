@@ -15,7 +15,13 @@ export function calculateStayOptions({
   const adultCount = Math.max(1, Number(adults) || Number(travelers) || 2);
   const totalTravelers = Math.max(1, Number(travelers) || adultCount);
 
-  // Calculate rooms required: 2 adults per room realistically
+  // Check if international
+  const isInternational =
+    dest.country &&
+    dest.country.toLowerCase() !== 'india' &&
+    dest.country.toLowerCase() !== 'in';
+
+  // Room requirements: 2 adults per room standard
   const isHostel =
     String(accommodationPreference).toLowerCase().includes('hostel') ||
     String(travelStyle).toLowerCase().includes('backpack');
@@ -28,41 +34,59 @@ export function calculateStayOptions({
 
   // Determine base nightly rate per room/bed
   const pref = String(accommodationPreference).toLowerCase();
-  let baseNightlyRate = 3200;
-  let stayTypeLabel = 'Boutique Hotel';
+  let baseNightlyRate = isInternational ? 5500 : 2600;
+  let stayTypeLabel = 'Comfortable Hotel';
 
-  if (pref.includes('hostel')) {
-    baseNightlyRate = 650; // per bed
-    stayTypeLabel = 'Social Mountain/City Hostel (Dorm Bed)';
-  } else if (pref.includes('budget hotel') || pref.includes('budget')) {
-    baseNightlyRate = 1600;
-    stayTypeLabel = 'Cozy Budget Hotel';
-  } else if (pref.includes('homestay')) {
-    baseNightlyRate = 2400;
-    stayTypeLabel = 'Authentic Local Homestay';
-  } else if (pref.includes('resort')) {
-    baseNightlyRate = 5800;
-    stayTypeLabel = 'Eco-Luxury Nature Resort';
-  } else if (pref.includes('premium')) {
-    baseNightlyRate = 8500;
-    stayTypeLabel = '4★ / 5★ Premium Hotel & Spa';
-  } else {
-    // No preference: infer from travel style
-    const style = String(travelStyle).toLowerCase();
-    if (style.includes('budget') || style.includes('backpack')) {
-      baseNightlyRate = 1600;
-      stayTypeLabel = 'Budget Accommodations';
-    } else if (style.includes('luxury') || style.includes('premium')) {
-      baseNightlyRate = 7500;
-      stayTypeLabel = 'Luxury Boutique Retreat';
+  if (isInternational) {
+    if (pref.includes('hostel')) {
+      baseNightlyRate = 1800; // per bed
+      stayTypeLabel = 'International City Hostel (Dorm Bed)';
+    } else if (pref.includes('budget')) {
+      baseNightlyRate = 3500;
+      stayTypeLabel = 'Budget City Hotel';
+    } else if (pref.includes('homestay') || pref.includes('apartment')) {
+      baseNightlyRate = 5000;
+      stayTypeLabel = 'Serviced City Apartment / Homestay';
+    } else if (pref.includes('resort') || pref.includes('premium') || pref.includes('luxury')) {
+      baseNightlyRate = 14000;
+      stayTypeLabel = '4★ / 5★ Luxury International Hotel';
     } else {
-      baseNightlyRate = 3200;
-      stayTypeLabel = 'Comfortable Hotel';
+      baseNightlyRate = 6000;
+      stayTypeLabel = 'Boutique 3★ Hotel';
+    }
+  } else {
+    if (pref.includes('hostel')) {
+      baseNightlyRate = 650; // per bed
+      stayTypeLabel = 'Social Mountain/City Hostel (Dorm Bed)';
+    } else if (pref.includes('budget hotel') || pref.includes('budget')) {
+      baseNightlyRate = 1400;
+      stayTypeLabel = 'Cozy Budget Hotel';
+    } else if (pref.includes('homestay')) {
+      baseNightlyRate = 2200;
+      stayTypeLabel = 'Authentic Local Homestay';
+    } else if (pref.includes('resort')) {
+      baseNightlyRate = 5500;
+      stayTypeLabel = 'Eco-Nature Resort';
+    } else if (pref.includes('premium')) {
+      baseNightlyRate = 8500;
+      stayTypeLabel = '4★ / 5★ Premium Resort & Spa';
+    } else {
+      const style = String(travelStyle).toLowerCase();
+      if (style.includes('budget') || style.includes('backpack')) {
+        baseNightlyRate = 1400;
+        stayTypeLabel = 'Budget Accommodations';
+      } else if (style.includes('luxury') || style.includes('premium')) {
+        baseNightlyRate = 7500;
+        stayTypeLabel = 'Luxury Boutique Retreat';
+      } else {
+        baseNightlyRate = 2600;
+        stayTypeLabel = 'Comfortable Hotel';
+      }
     }
   }
 
   // Check if we have an authentic stay in INITIAL_STAYS for this city
-  const cityKey = dest.city.toLowerCase();
+  const cityKey = (dest.city || '').toLowerCase();
   const matchedStay = INITIAL_STAYS.find((s) => {
     const loc = (s.location || '').toLowerCase();
     const name = (s.name || '').toLowerCase();
@@ -73,7 +97,9 @@ export function calculateStayOptions({
     ? matchedStay.name
     : `${dest.city} ${stayTypeLabel.split(' ')[0]} Retreat`;
 
-  const nightlyRate = matchedStay && matchedStay.pricePerNight ? matchedStay.pricePerNight : baseNightlyRate;
+  const nightlyRate = matchedStay && matchedStay.pricePerNight && !isInternational
+    ? matchedStay.pricePerNight
+    : baseNightlyRate;
 
   // Calculate total stay cost
   // If hostel, rate is per traveler; if hotel/resort/homestay, rate is per room
@@ -91,12 +117,12 @@ export function calculateStayOptions({
       : 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80');
 
   return {
-    id: matchedStay?.id || `stay-${dest.id}-recommended`,
+    id: matchedStay?.id || `stay-${dest.id || 'dest'}-recommended`,
     name: stayName,
     type: stayTypeLabel,
-    location: matchedStay?.location || `${dest.city}, ${dest.state}`,
+    location: matchedStay?.location || `${dest.city}${dest.state ? `, ${dest.state}` : ''}${dest.country ? `, ${dest.country}` : ''}`,
     nightlyRate,
-    priceLabel: `₹${nightlyRate.toLocaleString('en-IN')} / ${isHostel ? 'person' : 'room'} / night`,
+    priceLabel: `₹${nightlyRate.toLocaleString('en-IN')} / ${isHostel ? 'person' : 'room'} / night (est.)`,
     roomsRequired: calculatedRooms,
     roomDetails: isHostel
       ? `${totalTravelers} Reserved Dorm Bunk${totalTravelers > 1 ? 's' : ''}`
@@ -105,12 +131,13 @@ export function calculateStayOptions({
     totalCost: totalStayCost,
     image: stayImage,
     rating: matchedStay?.rating || 4.8,
+    isEstimate: true,
     amenities: matchedStay?.amenities || [
       'High-Speed Wi-Fi',
-      'Mountain/City View Balcony',
+      'Scenic View / Balcony',
       'Hot Water 24/7',
       'Complimentary Breakfast',
-      'On-site Cafe',
+      'On-site Cafe / Dining',
     ],
   };
 }

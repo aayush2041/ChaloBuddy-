@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useImperativeHandle } from 'react';
 import {
   Calendar as CalendarIcon,
   ChevronLeft,
@@ -20,26 +20,64 @@ const MONTH_SHORT = [
 
 const DAY_NAMES = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
+// Timezone-safe date parser that avoids UTC offset date shifts
+export function parseDate(val) {
+  if (!val) return null;
+  if (val instanceof Date) {
+    if (isNaN(val.getTime())) return null;
+    return new Date(val.getFullYear(), val.getMonth(), val.getDate());
+  }
+  if (typeof val === 'string') {
+    const trimmed = val.trim();
+    // Match YYYY-MM-DD or YYYY/MM/DD
+    const isoMatch = trimmed.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+    if (isoMatch) {
+      const year = parseInt(isoMatch[1], 10);
+      const month = parseInt(isoMatch[2], 10) - 1;
+      const day = parseInt(isoMatch[3], 10);
+      return new Date(year, month, day);
+    }
+    // Match "15 Oct 2026" or "15 October 2026" or "15-Oct-2026"
+    const wordsMatch = trimmed.match(/^(\d{1,2})[- \s]+([A-Za-z]+)[- \s]+(\d{4})/);
+    if (wordsMatch) {
+      const day = parseInt(wordsMatch[1], 10);
+      const monthPrefix = wordsMatch[2].slice(0, 3).toLowerCase();
+      const monthIndex = MONTH_SHORT.findIndex((m) => m.toLowerCase() === monthPrefix);
+      const year = parseInt(wordsMatch[3], 10);
+      if (monthIndex !== -1) {
+        return new Date(year, monthIndex, day);
+      }
+    }
+    // Fallback general parse
+    const parsed = new Date(val);
+    if (!isNaN(parsed.getTime())) {
+      return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+    }
+  }
+  return null;
+}
+
+// Local timezone YYYY-MM-DD formatter (avoids UTC day shifts)
+export function toISODateString(val) {
+  const d = parseDate(val);
+  if (!d) return '';
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 // Helper to format date consistently: "15 Oct 2026"
 export function formatDate(date) {
-  if (!date) return '';
-  const d = date instanceof Date ? date : new Date(date);
-  if (isNaN(d.getTime())) return String(date);
+  const d = parseDate(date);
+  if (!d) return '';
   const day = d.getDate();
   const month = MONTH_SHORT[d.getMonth()];
   const year = d.getFullYear();
   return `${day} ${month} ${year}`;
 }
 
-// Helper to parse date string or Date
-export function parseDate(val) {
-  if (!val) return null;
-  if (val instanceof Date) return val;
-  const parsed = new Date(val);
-  return isNaN(parsed.getTime()) ? null : parsed;
-}
-
-export default function DatePicker({
+const DatePicker = React.forwardRef(function DatePicker({
   mode = 'range', // 'range' | 'single'
   value = null, // for range: { start, end } or strings; for single: date/string
   onChange,
@@ -50,7 +88,9 @@ export default function DatePicker({
   className = '',
   required = false,
   error = '',
-}) {
+  disabled = false,
+  icon = null,
+}, ref) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef(null);
 
@@ -88,15 +128,36 @@ export default function DatePicker({
     }
   }, [value, mode]);
 
-  // Click outside to close
+  // Expose imperative API for parent container trigger
+  useImperativeHandle(ref, () => ({
+    open: () => {
+      if (!disabled) setIsOpen(true);
+    },
+    close: () => setIsOpen(false),
+    toggle: () => {
+      if (!disabled) setIsOpen((prev) => !prev);
+    },
+    isOpen,
+  }));
+
+  // Click outside or press Escape to close
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (containerRef.current && !containerRef.current.contains(e.target)) {
         setIsOpen(false);
       }
     };
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setIsOpen(false);
+      }
+    };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
   }, []);
 
   const nextMonth = () => {
@@ -140,7 +201,7 @@ export default function DatePicker({
       setSelectedStart(clicked);
       setIsOpen(false);
       if (onChange) {
-        onChange(formatDate(clicked), clicked);
+        onChange(formatDate(clicked), clicked, toISODateString(clicked));
       }
       return;
     }
@@ -163,6 +224,8 @@ export default function DatePicker({
             end: formatDate(clicked),
             startDate: selectedStart,
             endDate: clicked,
+            startDateStr: toISODateString(selectedStart),
+            endDateStr: toISODateString(clicked),
           });
         }
       }
@@ -177,7 +240,7 @@ export default function DatePicker({
     if (mode === 'single') {
       setSelectedStart(start);
       setIsOpen(false);
-      if (onChange) onChange(formatDate(start), start);
+      if (onChange) onChange(formatDate(start), start, toISODateString(start));
       return;
     }
 
@@ -194,6 +257,8 @@ export default function DatePicker({
         end: formatDate(end),
         startDate: start,
         endDate: end,
+        startDateStr: toISODateString(start),
+        endDateStr: toISODateString(end),
       });
     }
   };
@@ -222,41 +287,80 @@ export default function DatePicker({
 
   return (
     <div ref={containerRef} className={`relative select-none ${className}`}>
-      {/* Clickable Input Trigger */}
+      {/* Clickable Input Trigger - entire area opens picker */}
       <div
         onClick={() => setIsOpen(!isOpen)}
-        className="cursor-pointer w-full text-left focus:outline-none"
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setIsOpen(!isOpen);
+          }
+        }}
+        data-testid="datepicker-trigger"
+        className="cursor-pointer w-full h-full text-left focus:outline-none flex items-center justify-between gap-2"
         role="button"
         tabIndex={0}
       >
-        {label && (
-          <span className={`text-[11px] font-semibold uppercase tracking-wider block ${
-            isDark ? 'text-slate-400' : 'text-slate-500'
-          }`}>
-            {label}
+        <div className="flex-1 min-w-0">
+          {label && (
+            <span className={`text-[10px] uppercase font-bold tracking-wider block ${
+              isDark ? 'text-slate-400' : 'text-slate-500'
+            }`}>
+              {label}
+            </span>
+          )}
+          <span
+            className={`text-xs sm:text-sm font-bold block truncate mt-0.5 ${
+              displayValue
+                ? isDark ? 'text-white' : 'text-[#071A2B]'
+                : isDark ? 'text-slate-400 font-normal' : 'text-slate-400 font-normal'
+            }`}
+          >
+            {displayValue || placeholder}
           </span>
+        </div>
+
+        {displayValue && (
+          <button
+            type="button"
+            aria-label="Clear date"
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedStart(null);
+              setSelectedEnd(null);
+              if (onChange) {
+                if (mode === 'range') onChange({ start: '', end: '', startDate: null, endDate: null });
+                else onChange('', null);
+              }
+            }}
+            className={`p-1 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors cursor-pointer shrink-0`}
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
         )}
-        <span
-          className={`text-xs sm:text-sm font-bold block truncate mt-0.5 ${
-            displayValue
-              ? isDark ? 'text-white' : 'text-[#071A2B]'
-              : isDark ? 'text-slate-400 font-normal' : 'text-slate-400 font-normal'
-          }`}
-        >
-          {displayValue || placeholder}
-        </span>
       </div>
 
       {/* Calendar Dropdown Modal */}
       {isOpen && (
-        <div
-          className={`absolute left-0 sm:left-auto sm:right-0 top-full mt-2 w-80 sm:w-88 rounded-3xl shadow-2xl border p-4 sm:p-5 z-50 animate-fade-in ${
-            isDark
-              ? 'bg-[#071A2B] border-white/15 text-white shadow-black/60'
-              : 'bg-white border-slate-200 text-[#071A2B] shadow-slate-300/60'
-          }`}
-          onClick={(e) => e.stopPropagation()}
-        >
+        <>
+          {/* Mobile Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/50 z-40 sm:hidden backdrop-blur-xs"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsOpen(false);
+            }}
+          />
+
+          <div
+            data-testid="datepicker-dropdown"
+            className={`fixed inset-x-3 top-20 max-w-[340px] mx-auto sm:inset-auto sm:absolute sm:top-full sm:right-0 sm:left-auto sm:mt-2 sm:w-88 rounded-3xl shadow-2xl border p-3.5 sm:p-5 z-50 animate-fade-in ${
+              isDark
+                ? 'bg-[#071A2B] border-white/15 text-white shadow-black/60'
+                : 'bg-white border-slate-200 text-[#071A2B] shadow-slate-300/60'
+            }`}
+            onClick={(e) => e.stopPropagation()}
+          >
           {/* Header Month / Year Switcher */}
           <div className="flex items-center justify-between pb-3 border-b border-white/10">
             <div>
@@ -444,21 +548,26 @@ export default function DatePicker({
                         end: formatDate(end),
                         startDate: selectedStart,
                         endDate: end,
+                        startDateStr: toISODateString(selectedStart),
+                        endDateStr: toISODateString(end),
                       });
                     }
                   } else {
-                    if (onChange) onChange(formatDate(selectedStart), selectedStart);
+                    if (onChange) onChange(formatDate(selectedStart), selectedStart, toISODateString(selectedStart));
                   }
                 }
                 setIsOpen(false);
               }}
-              className="btn-primary-cb !py-1.5 !px-4 !text-xs font-bold"
+              className="btn-primary-cb !py-1.5 !px-4 !text-xs font-bold cursor-pointer"
             >
               Apply
             </button>
           </div>
         </div>
+        </>
       )}
     </div>
   );
-}
+});
+
+export default DatePicker;

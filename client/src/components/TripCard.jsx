@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { useStore } from '../context/StoreContext';
+import { getTripStartingLocation } from '../services/tripSearchService';
 import {
   Heart,
   Calendar,
   MapPin,
   ArrowRight,
   ShieldCheck,
-  Flame,
-  Clock,
+  Users,
 } from 'lucide-react';
 
 export default function TripCard({ trip }) {
@@ -22,139 +22,130 @@ export default function TripCard({ trip }) {
     setTimeout(() => setHeartPopping(false), 350);
   };
 
-  const getDifficultyBadge = (diff) => {
-    switch (diff) {
-      case 'Easy':
-        return 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30';
-      case 'Challenging':
-        return 'bg-rose-500/20 text-rose-300 border-rose-500/30';
-      case 'Moderate':
-      default:
-        return 'bg-amber-500/20 text-amber-300 border-amber-500/30';
-    }
+  const startingLocation = getTripStartingLocation(trip);
+  const availableSeats = trip.spotsLeft ?? (trip.maxGroupSize - (trip.currentGroupSize || 0)) ?? 4;
+  const host = trip.organizer || {
+    name: 'Verified Host',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+    rating: 4.9,
   };
 
   return (
     <div
       onClick={() => navigate('trip-detail', { id: trip.id })}
-      className="group relative bg-[#0C2438] rounded-3xl overflow-hidden border border-white/10 shadow-lg hover:shadow-2xl transition-all duration-300 flex flex-col cursor-pointer card-hover"
+      className="group relative bg-[#0C2438] rounded-2xl overflow-hidden border border-white/10 shadow-lg hover:shadow-2xl hover:border-white/20 transition-all duration-300 flex flex-col justify-between cursor-pointer card-hover"
     >
-      {/* Image Header with Zoom & Badges */}
-      <div className="relative h-64 sm:h-72 w-full overflow-hidden bg-slate-900">
+      {/* Image Header with Responsive Height */}
+      <div className="relative h-48 sm:h-56 md:h-60 w-full overflow-hidden bg-slate-900">
         <img
-          src={trip.images[0]}
+          src={trip.images?.[0] || 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80'}
           alt={trip.title}
-          className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-108"
+          className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
           loading="lazy"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0C2438] via-transparent to-black/30" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0C2438] via-black/20 to-black/30" />
 
-        {/* Top Badges: Difficulty & Heart */}
-        <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-10">
-          <div className="flex items-center gap-2">
-            <span
-              className={`text-xs px-3 py-1 rounded-full font-bold backdrop-blur-md border ${getDifficultyBadge(
-                trip.difficulty
-              )}`}
-            >
-              {trip.difficulty}
-            </span>
-            {trip.spotsLeft && trip.spotsLeft <= 5 && (
-              <span className="text-[11px] px-2.5 py-0.5 rounded-full font-semibold bg-[#FF5A1F] text-white flex items-center gap-1 shadow-md">
-                <Flame className="w-3 h-3" />
-                {trip.spotsLeft} spots left
-              </span>
-            )}
-          </div>
+        {/* Top Badges: Available Seats & Save Heart */}
+        <div className="absolute top-3.5 left-3.5 right-3.5 flex items-center justify-between z-10">
+          <span className="text-xs px-2.5 py-1 rounded-full font-bold bg-[#071A2B]/90 text-white backdrop-blur-md border border-white/15 flex items-center gap-1.5 shadow min-h-[30px]">
+            <Users className="w-3.5 h-3.5 text-[#FF5A1F]" />
+            <span>{availableSeats} {availableSeats === 1 ? 'seat left' : 'seats left'}</span>
+          </span>
 
-          {/* Heart Button */}
           <button
             type="button"
             onClick={handleHeartClick}
             aria-label="Save trip"
-            className={`w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-200 cursor-pointer ${
+            className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center backdrop-blur-md transition-all cursor-pointer touch-manipulation ${
               saved
                 ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/30'
                 : 'bg-black/40 hover:bg-black/60 text-white border border-white/20'
             } ${heartPopping ? 'animate-heart-pop' : ''}`}
           >
-            <Heart className={`w-5 h-5 ${saved ? 'fill-white' : ''}`} />
+            <Heart className={`w-4 h-4 ${saved ? 'fill-white' : ''}`} />
           </button>
         </div>
 
-        {/* Bottom Image Overlay: Traveler Avatars & Vibe */}
-        <div className="absolute bottom-3 left-4 right-4 flex items-center justify-between z-10">
-          <div className="flex items-center">
-            <div className="flex -space-x-2.5 overflow-hidden">
-              {(trip.travelerAvatars || []).slice(0, 3).map((avatar, idx) => (
-                <img
-                  key={idx}
-                  src={avatar}
-                  alt="Traveler"
-                  className="inline-block w-7 h-7 rounded-full ring-2 ring-[#0C2438] object-cover"
-                />
-              ))}
-            </div>
-            <span className="text-xs text-slate-300 ml-2 font-medium bg-black/40 backdrop-blur-sm px-2 py-0.5 rounded-full border border-white/10">
-              +{trip.currentGroupSize || 6} joined
+        {/* Bottom Image Overlay: Route pill */}
+        <div className="absolute bottom-3 left-3 right-3 sm:left-3.5 sm:right-3.5 z-10">
+          <div className="inline-flex items-center gap-1.5 bg-[#071A2B]/90 backdrop-blur-md px-2.5 sm:px-3 py-1 rounded-full border border-white/15 text-[11px] sm:text-xs text-white max-w-full">
+            <MapPin className="w-3.5 h-3.5 text-[#FF5A1F] flex-shrink-0" />
+            <span className="font-semibold truncate max-w-[85px] sm:max-w-[110px]">{startingLocation.split(',')[0]}</span>
+            <span className="text-[#FF5A1F] font-bold">→</span>
+            <span className="font-semibold truncate max-w-[95px] sm:max-w-[130px] text-amber-200">
+              {trip.destination.split(',')[0]}
             </span>
           </div>
-
-          <span className="text-xs text-white/90 bg-white/15 backdrop-blur-md px-2.5 py-0.5 rounded-full font-medium">
-            {trip.duration}
-          </span>
         </div>
       </div>
 
       {/* Card Content */}
-      <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
-        <div>
-          {/* Location & Host verified badge */}
-          <div className="flex items-center justify-between text-xs text-slate-400 mb-1.5">
-            <div className="flex items-center gap-1 text-slate-300">
-              <MapPin className="w-3.5 h-3.5 text-[#FF5A1F]" />
-              <span className="truncate max-w-[180px]">{trip.destination}</span>
+      <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between space-y-3 sm:space-y-4">
+        <div className="space-y-2">
+          {/* Title */}
+          <h3 className="text-base sm:text-lg font-bold text-white group-hover:text-[#FF5A1F] transition-colors line-clamp-1">
+            {trip.title}
+          </h3>
+
+          {/* Date & Duration */}
+          <div className="flex items-center justify-between text-xs text-slate-300">
+            <div className="flex items-center gap-1.5">
+              <Calendar className="w-3.5 h-3.5 text-[#FF5A1F]" />
+              <span>{trip.dates}</span>
             </div>
-            {trip.verifiedOrganizer && (
-              <span className="flex items-center gap-1 text-[11px] text-emerald-400 font-medium">
-                <ShieldCheck className="w-3 h-3" />
-                Verified Host
+            {trip.duration && (
+              <span className="text-slate-400 font-medium">
+                {trip.duration.split('/')[0].trim()}
               </span>
             )}
           </div>
 
-          {/* Title */}
-          <h3 className="text-lg font-bold text-white group-hover:text-[#FF5A1F] transition-colors line-clamp-1">
-            {trip.title}
-          </h3>
-
-          {/* Subtitle / Description preview */}
-          <p className="text-xs text-slate-400 mt-1 line-clamp-2 leading-relaxed">
-            {trip.subtitle || trip.about}
-          </p>
-
-          {/* Dates Bar */}
-          <div className="flex items-center gap-2 text-xs text-slate-300 mt-3 pt-3 border-t border-white/10">
-            <Calendar className="w-3.5 h-3.5 text-[#FF5A1F]" />
-            <span>{trip.dates}</span>
+          {/* Host Information */}
+          <div className="flex items-center justify-between pt-2.5 border-t border-white/10 text-xs">
+            <div className="flex items-center gap-2">
+              <img
+                src={host.avatar}
+                alt={host.name}
+                className="w-6 h-6 rounded-full object-cover ring-1 ring-white/20"
+              />
+              <span className="font-medium text-slate-200 truncate max-w-[130px]">
+                {host.name}
+              </span>
+            </div>
+            {trip.verifiedOrganizer && (
+              <span className="flex items-center gap-1 text-[11px] text-emerald-400 font-medium">
+                <ShieldCheck className="w-3 h-3" />
+                Verified
+              </span>
+            )}
           </div>
         </div>
 
-        {/* Footer: Price & Arrow CTA Button */}
-        <div className="pt-2 flex items-center justify-between border-t border-white/10">
-          <div>
-            <span className="text-[11px] text-slate-400 block font-normal">Starting from</span>
+        {/* Footer: Price & Clear View Trip Button - Vertically structured on small mobile screens */}
+        <div className="pt-3 border-t border-white/10 flex flex-col xs:flex-row items-stretch xs:items-center justify-between gap-3">
+          <div className="flex items-baseline xs:block justify-between">
+            <span className="text-[10px] text-slate-400 block uppercase font-medium">
+              Contribution / Price
+            </span>
             <div className="flex items-baseline gap-1">
-              <span className="text-xl font-extrabold text-white">
+              <span className="text-lg font-black text-white">
                 {formatPrice(trip.price)}
               </span>
-              <span className="text-xs text-slate-400">/ person</span>
+              <span className="text-[11px] text-slate-400">/ person</span>
             </div>
           </div>
 
-          <div className="w-10 h-10 rounded-full bg-[#FF5A1F] group-hover:bg-[#E04812] text-white flex items-center justify-center transition-all duration-200 shadow-md shadow-[#FF5A1F]/30 group-hover:translate-x-1">
-            <ArrowRight className="w-5 h-5" />
-          </div>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate('trip-detail', { id: trip.id });
+            }}
+            className="btn-primary-cb !py-2.5 xs:!py-2 !px-4 !text-xs font-bold inline-flex items-center justify-center gap-1.5 cursor-pointer shadow-md shadow-[#FF5A1F]/20 group-hover:scale-102 transition-transform w-full xs:w-auto min-h-[40px]"
+          >
+            <span>View Trip</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
     </div>

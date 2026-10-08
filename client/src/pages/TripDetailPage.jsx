@@ -443,6 +443,24 @@ export default function TripDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Mobile Sticky Booking Bar */}
+      <div className="lg:hidden fixed bottom-[52px] left-0 right-0 z-30 bg-[#071A2B]/95 backdrop-blur-xl border-t border-white/10 px-4 py-2.5 flex items-center justify-between shadow-2xl">
+        <div>
+          <span className="text-[10px] text-slate-400 block uppercase font-bold">Contribution</span>
+          <div className="flex items-baseline gap-1">
+            <span className="text-base font-black text-white">{formatPrice(trip.price)}</span>
+            <span className="text-[10px] text-slate-400">/ person</span>
+          </div>
+        </div>
+        <button
+          onClick={() => setJoinTripModalData(trip)}
+          className="btn-primary-cb !py-2.5 !px-5 !text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-md shadow-[#FF5A1F]/30"
+        >
+          <span>Join Trip</span>
+          <ArrowRight className="w-3.5 h-3.5" />
+        </button>
+      </div>
     </div>
   );
 }

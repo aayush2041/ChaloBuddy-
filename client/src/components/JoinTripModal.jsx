@@ -50,6 +50,7 @@ export default function JoinTripModal() {
   };
 
   const handleSubmit = () => {
+    if (isSubmitting) return;
     setIsSubmitting(true);
     setTimeout(() => {
       joinTrip(trip.id, {
@@ -80,17 +81,17 @@ export default function JoinTripModal() {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
-      <div className="bg-[#0C2438] text-white w-full max-w-xl rounded-3xl border border-white/15 shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
+      <div data-testid="join-trip-modal" className="bg-[#0C2438] text-white w-full max-w-xl rounded-3xl border border-white/15 shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
         {/* Header */}
-        <div className="p-5 border-b border-white/10 flex items-center justify-between bg-[#071A2B]">
+        <div className="p-4 sm:p-5 border-b border-white/10 flex items-center justify-between bg-[#071A2B]">
           <div className="flex items-center gap-2.5">
             <span className="w-8 h-8 rounded-full bg-[#FF5A1F]/20 text-[#FF5A1F] flex items-center justify-center font-bold text-sm">
               🎒
             </span>
             <div>
               <h3 className="font-bold text-base text-white">Join This Trip</h3>
-              <p className="text-xs text-slate-400 truncate max-w-sm">{trip.title}</p>
+              <p className="text-xs text-slate-400 truncate max-w-[200px] sm:max-w-sm">{trip.title}</p>
             </div>
           </div>
 
@@ -104,33 +105,33 @@ export default function JoinTripModal() {
 
         {/* Step Indicator */}
         {!isConfirmed && (
-          <div className="bg-[#071A2B]/60 px-6 py-3 border-b border-white/10 flex items-center justify-between text-xs">
-            <div className={`flex items-center gap-1.5 ${step >= 1 ? 'text-[#FF5A1F] font-bold' : 'text-slate-400'}`}>
+          <div className="bg-[#071A2B]/60 px-3 sm:px-6 py-2.5 sm:py-3 border-b border-white/10 flex items-center justify-between text-xs">
+            <div className={`flex items-center gap-1 sm:gap-1.5 ${step >= 1 ? 'text-[#FF5A1F] font-bold' : 'text-slate-400'}`}>
               <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${step >= 1 ? 'bg-[#FF5A1F] text-white' : 'bg-white/10'}`}>1</span>
-              <span>Travelers</span>
+              <span className="text-[11px] sm:text-xs">Travelers</span>
             </div>
-            <div className="w-8 h-0.5 bg-white/10" />
-            <div className={`flex items-center gap-1.5 ${step >= 2 ? 'text-[#FF5A1F] font-bold' : 'text-slate-400'}`}>
+            <div className="w-3 sm:w-8 h-0.5 bg-white/10" />
+            <div className={`flex items-center gap-1 sm:gap-1.5 ${step >= 2 ? 'text-[#FF5A1F] font-bold' : 'text-slate-400'}`}>
               <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${step >= 2 ? 'bg-[#FF5A1F] text-white' : 'bg-white/10'}`}>2</span>
-              <span>Details & Notes</span>
+              <span className="text-[11px] sm:text-xs">Details</span>
             </div>
-            <div className="w-8 h-0.5 bg-white/10" />
-            <div className={`flex items-center gap-1.5 ${step >= 3 ? 'text-[#FF5A1F] font-bold' : 'text-slate-400'}`}>
+            <div className="w-3 sm:w-8 h-0.5 bg-white/10" />
+            <div className={`flex items-center gap-1 sm:gap-1.5 ${step >= 3 ? 'text-[#FF5A1F] font-bold' : 'text-slate-400'}`}>
               <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${step >= 3 ? 'bg-[#FF5A1F] text-white' : 'bg-white/10'}`}>3</span>
-              <span>Review & Pay</span>
+              <span className="text-[11px] sm:text-xs">Payment</span>
             </div>
           </div>
         )}
 
         {/* Modal Body */}
-        <div className="p-6 overflow-y-auto flex-1 space-y-5">
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-4 sm:space-y-5">
           {isConfirmed ? (
             <div className="text-center py-6 space-y-4">
               <div className="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto ring-8 ring-emerald-500/10 animate-bounce">
                 <CheckCircle2 className="w-10 h-10" />
               </div>
               <div>
-                <h4 className="text-2xl font-extrabold text-white">You're Going to {trip.destination.split(',')[0]}!</h4>
+                <h4 data-testid="join-trip-confirmed-heading" className="text-2xl font-extrabold text-white">You're Going to {trip.destination.split(',')[0]}!</h4>
                 <p className="text-xs text-slate-300 mt-2 max-w-md mx-auto">
                   Your request has been instantly accepted by {trip.organizer?.name || 'the organizer'}. Your booking is secured and your interactive Trip Workspace is ready.
                 </p>
@@ -333,6 +334,7 @@ export default function JoinTripModal() {
 
             <button
               type="button"
+              data-testid="join-trip-next-btn"
               onClick={handleNext}
               disabled={isSubmitting}
               className="btn-primary-cb !py-2.5 !px-6 !text-xs font-bold flex items-center gap-2 cursor-pointer disabled:opacity-50"

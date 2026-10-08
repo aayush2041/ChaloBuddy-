@@ -16,6 +16,7 @@ export default function ContactPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading) return;
     if (!formData.name || !formData.email || !formData.comment) {
       showToast?.('Please fill out all required fields', 'error');
       return;
@@ -65,7 +66,7 @@ export default function ContactPage() {
                 </div>
                 <h3 className="font-heading font-bold text-xl uppercase text-[#09090B]">Message Received</h3>
                 <p className="text-sm text-[#52525B]">
-                  Thank you for reaching out. A ValorVault support agent will respond to <strong>{formData.email}</strong> within 15 minutes.
+                  Thank you for reaching out. A ChaloBuddy support team member will respond to <strong>{formData.email}</strong> shortly.
                 </p>
                 <button
                   onClick={() => {

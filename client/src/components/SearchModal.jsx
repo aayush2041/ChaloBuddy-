@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useStore } from '../context/StoreContext';
 import {
   Search,
@@ -24,41 +24,54 @@ export default function SearchModal() {
 
   const [query, setQuery] = useState('');
 
-  if (!searchModalOpen) return null;
-
   const filteredTrips = useMemo(() => {
-    if (!query.trim()) return trips.slice(0, 3);
+    if (!searchModalOpen) return [];
+    if (!query.trim()) return (trips || []).slice(0, 3);
     const q = query.toLowerCase();
-    return trips.filter(
+    return (trips || []).filter(
       (t) =>
-        t.title.toLowerCase().includes(q) ||
-        t.destination.toLowerCase().includes(q) ||
-        t.difficulty.toLowerCase().includes(q) ||
+        t.title?.toLowerCase().includes(q) ||
+        t.destination?.toLowerCase().includes(q) ||
+        t.difficulty?.toLowerCase().includes(q) ||
         (t.vibes || []).some((v) => v.toLowerCase().includes(q))
     );
-  }, [trips, query]);
+  }, [searchModalOpen, trips, query]);
 
   const filteredStays = useMemo(() => {
-    if (!query.trim()) return stays.slice(0, 2);
+    if (!searchModalOpen) return [];
+    if (!query.trim()) return (stays || []).slice(0, 2);
     const q = query.toLowerCase();
-    return stays.filter(
+    return (stays || []).filter(
       (s) =>
-        s.name.toLowerCase().includes(q) ||
-        s.location.toLowerCase().includes(q) ||
-        s.propertyType.toLowerCase().includes(q)
+        s.name?.toLowerCase().includes(q) ||
+        s.location?.toLowerCase().includes(q) ||
+        s.propertyType?.toLowerCase().includes(q)
     );
-  }, [stays, query]);
+  }, [searchModalOpen, stays, query]);
 
   const filteredBuddies = useMemo(() => {
-    if (!query.trim()) return buddies.slice(0, 2);
+    if (!searchModalOpen) return [];
+    if (!query.trim()) return (buddies || []).slice(0, 2);
     const q = query.toLowerCase();
-    return buddies.filter(
+    return (buddies || []).filter(
       (b) =>
-        b.name.toLowerCase().includes(q) ||
-        b.location.toLowerCase().includes(q) ||
+        b.name?.toLowerCase().includes(q) ||
+        b.location?.toLowerCase().includes(q) ||
         (b.travelStyle || []).some((s) => s.toLowerCase().includes(q))
     );
-  }, [buddies, query]);
+  }, [searchModalOpen, buddies, query]);
+
+  // Close on Escape key
+  useEffect(() => {
+    if (!searchModalOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') setSearchModalOpen(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [searchModalOpen, setSearchModalOpen]);
+
+  if (!searchModalOpen) return null;
 
   const handleSelectTrip = (id) => {
     setSearchModalOpen(false);
@@ -76,13 +89,19 @@ export default function SearchModal() {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 p-4 bg-black/75 backdrop-blur-md animate-fade-in">
-      <div className="bg-[#0C2438] text-white w-full max-w-2xl rounded-3xl border border-white/15 shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) setSearchModalOpen(false);
+      }}
+      className="fixed inset-0 z-50 flex items-start justify-center pt-14 sm:pt-20 p-3 sm:p-4 bg-black/75 backdrop-blur-md animate-fade-in"
+    >
+      <div data-testid="search-modal-container" className="bg-[#0C2438] text-white w-full max-w-2xl rounded-3xl border border-white/15 shadow-2xl overflow-hidden flex flex-col max-h-[85vh] sm:max-h-[80vh]">
         {/* Search Input Bar */}
         <div className="p-4 border-b border-white/10 flex items-center gap-3 bg-[#071A2B]">
           <Search className="w-5 h-5 text-[#FF5A1F] flex-shrink-0" />
           <input
             type="text"
+            data-testid="search-modal-input"
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -98,6 +117,8 @@ export default function SearchModal() {
             </button>
           )}
           <button
+            data-testid="search-modal-close-btn"
+            aria-label="Close search"
             onClick={() => setSearchModalOpen(false)}
             className="p-1 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors cursor-pointer"
           >

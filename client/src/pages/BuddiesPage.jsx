@@ -127,6 +127,17 @@ export default function BuddiesPage() {
             <Users className="w-10 h-10 text-[#FF5A1F] mx-auto" />
             <h3 className="font-bold text-base text-[#071A2B]">No buddies match these filters</h3>
             <p className="text-xs text-slate-500">Try broadening your travel style or location filters.</p>
+            <button
+              type="button"
+              onClick={() => {
+                setSearchLocation('');
+                setSelectedStyle('All');
+                setSelectedInterest('All');
+              }}
+              className="btn-primary-cb !py-2 !px-5 !text-xs font-semibold cursor-pointer"
+            >
+              Reset Filters
+            </button>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">

@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useStore } from '../context/StoreContext';
-import DatePicker from './DatePicker';
+import DatePicker, { parseDate } from './DatePicker';
 import {
   X,
   Calendar,
@@ -28,6 +28,7 @@ export default function ReserveStayModal() {
   const [selectedRoomId, setSelectedRoomId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isConfirmed, setIsConfirmed] = useState(false);
+  const datePickerRef = useRef(null);
 
   if (!reserveStayModalData) return null;
   const stay = reserveStayModalData;
@@ -38,17 +39,18 @@ export default function ReserveStayModal() {
 
   const selectedRoom = rooms.find((r) => r.id === selectedRoomId) || rooms[0];
 
-  // Calculate nights dynamically
-  const sDate = new Date(checkIn);
-  const eDate = new Date(checkOut);
-  const diffTime = eDate - sDate;
-  const nights = !isNaN(diffTime) && diffTime > 0 ? Math.ceil(diffTime / (1000 * 60 * 60 * 24)) : 3;
+  // Calculate nights dynamically without UTC timezone drift
+  const sDate = parseDate(checkIn);
+  const eDate = parseDate(checkOut);
+  const diffTime = sDate && eDate ? eDate.getTime() - sDate.getTime() : 0;
+  const nights = !isNaN(diffTime) && diffTime > 0 ? Math.max(1, Math.round(diffTime / (1000 * 60 * 60 * 24))) : 3;
   const roomPrice = selectedRoom.price || stay.pricePerNight;
   const subtotal = roomPrice * nights;
   const serviceFee = Math.round(subtotal * 0.08);
   const totalAmount = subtotal + serviceFee;
 
   const handleReserve = () => {
+    if (isSubmitting) return;
     setIsSubmitting(true);
     setTimeout(() => {
       reserveStay(stay.id, {
@@ -80,17 +82,17 @@ export default function ReserveStayModal() {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
       <div className="bg-[#0C2438] text-white w-full max-w-lg rounded-3xl border border-white/15 shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
         {/* Header */}
-        <div className="p-5 border-b border-white/10 flex items-center justify-between bg-[#071A2B]">
+        <div className="p-4 sm:p-5 border-b border-white/10 flex items-center justify-between bg-[#071A2B]">
           <div className="flex items-center gap-2.5">
             <span className="w-8 h-8 rounded-full bg-[#FF5A1F]/20 text-[#FF5A1F] flex items-center justify-center font-bold text-sm">
               🏡
             </span>
             <div>
               <h3 className="font-bold text-base text-white">Reserve Your Stay</h3>
-              <p className="text-xs text-slate-400 truncate max-w-xs">{stay.name}</p>
+              <p className="text-xs text-slate-400 truncate max-w-[200px] sm:max-w-xs">{stay.name}</p>
             </div>
           </div>
 
@@ -103,7 +105,7 @@ export default function ReserveStayModal() {
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto flex-1 space-y-5">
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-4 sm:space-y-5">
           {isConfirmed ? (
             <div className="text-center py-6 space-y-4">
               <div className="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto ring-8 ring-emerald-500/10 animate-bounce">
@@ -152,20 +154,26 @@ export default function ReserveStayModal() {
               {/* Dates Picker */}
               <div className="text-xs">
                 <label className="block text-slate-300 font-medium mb-1">Stay Dates (Check-in & Check-out)</label>
-                <div className="bg-[#071A2B] border border-white/15 rounded-xl px-3.5 py-2.5 focus-within:border-[#FF5A1F]">
-                  <DatePicker
-                    mode="range"
-                    theme="dark"
-                    label=""
-                    placeholder="Select check-in & check-out dates"
-                    value={{ start: checkIn, end: checkOut }}
-                    onChange={(dates) => {
-                      if (dates?.start && dates?.end) {
-                        setCheckIn(dates.start);
-                        setCheckOut(dates.end);
-                      }
-                    }}
-                  />
+                <div
+                  className="bg-[#071A2B] border border-white/15 rounded-xl px-3.5 py-2.5 focus-within:border-[#FF5A1F] cursor-pointer"
+                  onClick={() => datePickerRef.current?.open()}
+                >
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <DatePicker
+                      ref={datePickerRef}
+                      mode="range"
+                      theme="dark"
+                      label=""
+                      placeholder="Select check-in & check-out dates"
+                      value={{ start: checkIn, end: checkOut }}
+                      onChange={(dates) => {
+                        if (dates?.start && dates?.end) {
+                          setCheckIn(dates.start);
+                          setCheckOut(dates.end);
+                        }
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
 

@@ -79,13 +79,22 @@ export function resolveLocation(input) {
     };
   }
 
-  if (typeof input === 'object' && input.city && input.lat !== undefined) {
+  // If already a valid structured location object with valid finite coordinates
+  if (
+    typeof input === 'object' &&
+    (input.city || input.placeName) &&
+    input.lat !== undefined &&
+    input.lat !== null &&
+    !input.unresolved &&
+    Number.isFinite(Number(input.lat)) &&
+    Number.isFinite(Number(input.lng))
+  ) {
     return {
-      id: input.id || input.city.toLowerCase().replace(/\s+/g, '-'),
-      city: input.city,
+      id: input.id || (input.city || input.placeName).toLowerCase().replace(/\s+/g, '-'),
+      city: input.city || input.placeName,
       state: input.state || 'India',
       country: input.country || 'India',
-      fullName: input.fullName || `${input.city}, ${input.state || 'India'}`,
+      fullName: input.fullName || [input.city || input.placeName, input.state, input.country].filter(Boolean).join(', '),
       type: input.type || 'Travel Destination',
       lat: Number(input.lat),
       lng: Number(input.lng),
@@ -93,23 +102,30 @@ export function resolveLocation(input) {
     };
   }
 
-  const query = String(input).toLowerCase().trim();
+  // Extract clean search query from string or partial object
+  let query = '';
+  if (typeof input === 'string') {
+    query = input.trim();
+  } else if (typeof input === 'object') {
+    query = (input.id || input.city || input.placeName || input.fullName || '').trim();
+  }
 
-  // Try exact match in destinations database
+  const queryLower = query.toLowerCase();
+
+  // Try exact or partial match in curated destinations database
   const match = DESTINATIONS_DATABASE.find(
     (d) =>
-      d.id === query ||
-      d.city.toLowerCase() === query ||
-      d.fullName.toLowerCase().includes(query) ||
-      query.includes(d.city.toLowerCase())
+      d.id === queryLower ||
+      d.city.toLowerCase() === queryLower ||
+      d.fullName.toLowerCase().includes(queryLower) ||
+      (queryLower.length > 2 && queryLower.includes(d.city.toLowerCase()))
   );
 
   if (match) {
     return { ...match };
   }
 
-  // Legacy aliases for common hubs. Unknown locations must be geocoded by the UI
-  // rather than assigned fabricated coordinates.
+  // Common transport hub aliases with accurate coordinates
   const commonCities = {
     mumbai: { city: 'Mumbai', state: 'Maharashtra', lat: 19.076, lng: 72.8777 },
     bengaluru: { city: 'Bengaluru', state: 'Karnataka', lat: 12.9716, lng: 77.5946 },
@@ -123,10 +139,10 @@ export function resolveLocation(input) {
     lucknow: { city: 'Lucknow', state: 'Uttar Pradesh', lat: 26.8467, lng: 80.9462 },
   };
 
-  const fallbackCity = commonCities[query];
+  const fallbackCity = commonCities[queryLower];
   if (fallbackCity) {
     return {
-      id: query,
+      id: queryLower,
       city: fallbackCity.city,
       state: fallbackCity.state,
       country: 'India',
@@ -137,17 +153,16 @@ export function resolveLocation(input) {
     };
   }
 
-  // Never invent coordinates for an unknown place. The planner validates this
-  // and asks the UI to use a geocoded selection instead.
+  // For places not found locally, preserve the name cleanly without fabricating coordinates.
   const firstWord = query.split(',')[0].trim();
   const capitalized = firstWord ? firstWord.charAt(0).toUpperCase() + firstWord.slice(1) : 'Unknown';
 
   return {
     id: firstWord.toLowerCase().replace(/\s+/g, '-'),
-    city: capitalized,
-    state: '',
-    country: '',
-    fullName: String(input),
+    city: typeof input === 'object' && input.city ? input.city : capitalized,
+    state: typeof input === 'object' && input.state ? input.state : '',
+    country: typeof input === 'object' && input.country ? input.country : '',
+    fullName: typeof input === 'object' && input.fullName ? input.fullName : query,
     type: 'Unresolved Location',
     lat: null,
     lng: null,

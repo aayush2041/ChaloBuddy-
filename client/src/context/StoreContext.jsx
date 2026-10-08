@@ -10,6 +10,7 @@ import {
   MOCK_MANALI_PLAN,
 } from '../data/seedData';
 import { generateTripPlan } from '../services/tripPlannerService';
+import { getTripStartingLocation } from '../services/tripSearchService';
 
 const StoreContext = createContext(null);
 
@@ -18,6 +19,7 @@ export function StoreProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(() => {
     try {
       const saved = localStorage.getItem('cb_user');
+      if (saved === 'null' || saved === 'guest') return null;
       return saved ? JSON.parse(saved) : INITIAL_USERS[1]; // Default: Priya Patel (Traveler)
     } catch {
       return INITIAL_USERS[1];
@@ -26,7 +28,7 @@ export function StoreProvider({ children }) {
 
   // 2. Navigation State / Hash Routing
   const [currentRoute, setCurrentRoute] = useState(() => {
-    const hash = window.location.hash.replace(/^#\/?/, '');
+    const hash = window.location.hash.replace(/^#+[\/]?/, '');
     if (!hash) return { page: 'home', params: {} };
     const parts = hash.split('/');
     const page = parts[0] || 'home';
@@ -53,16 +55,22 @@ export function StoreProvider({ children }) {
 
   // 4. Trips Catalog & User Listed Trips
   const [trips, setTrips] = useState(() => {
+    const enrich = (list) =>
+      list.map((t) => ({
+        ...t,
+        startingLocation: t.startingLocation || getTripStartingLocation(t),
+      }));
+
     try {
       const saved = localStorage.getItem('cb_trips');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed.length < INITIAL_TRIPS.length) return INITIAL_TRIPS;
-        return parsed;
+        if (parsed.length < INITIAL_TRIPS.length) return enrich(INITIAL_TRIPS);
+        return enrich(parsed);
       }
-      return INITIAL_TRIPS;
+      return enrich(INITIAL_TRIPS);
     } catch {
-      return INITIAL_TRIPS;
+      return enrich(INITIAL_TRIPS);
     }
   });
 
@@ -262,16 +270,7 @@ export function StoreProvider({ children }) {
   const [selectedLocation, setSelectedLocation] = useState(() => {
     try {
       const saved = localStorage.getItem('cb_selected_location');
-      return saved ? JSON.parse(saved) : {
-        id: 'delhi',
-        city: 'Delhi',
-        state: 'NCT of Delhi',
-        country: 'India',
-        fullName: 'Delhi, NCT of Delhi, India',
-        type: 'Metropolis & Heritage Capital',
-        lat: 28.6139,
-        lng: 77.2090,
-      };
+      return saved ? JSON.parse(saved) : null;
     } catch {
       return null;
     }
@@ -295,7 +294,7 @@ export function StoreProvider({ children }) {
   // Sync state to localStorage
   useEffect(() => {
     if (currentUser) localStorage.setItem('cb_user', JSON.stringify(currentUser));
-    else localStorage.removeItem('cb_user');
+    else localStorage.setItem('cb_user', 'null');
   }, [currentUser]);
 
   useEffect(() => {
@@ -780,13 +779,110 @@ export function StoreProvider({ children }) {
   };
 
   // Smart Plan Operations (Section 7)
+  const saveGeneratedPlan = (plan) => {
+    if (!plan) return null;
+
+    // Build a unique plan key based on destination, dates, and travelers
+    const destName = plan.destinationCity || (typeof plan.destination === 'string' ? plan.destination.split(',')[0].trim() : 'Trip');
+    const start = plan.startDate || (typeof plan.dates === 'object' ? plan.dates.start : '') || '';
+    const end = plan.endDate || (typeof plan.dates === 'object' ? plan.dates.end : '') || '';
+    const travelersCount = plan.travelers || plan.totalTravelers || 2;
+    const planKey = `${destName.toLowerCase()}_${start}_${end}_${travelersCount}`;
+
+    // Check if this plan is already in myTrips (by planKey, tripId, or bookingId)
+    const existing = myTrips.find(
+      (t) =>
+        t.planKey === planKey ||
+        (plan.id && (t.tripId === plan.id || t.bookingId === plan.id)) ||
+        (t.isSavedPlan && t.destination?.toLowerCase().includes(destName.toLowerCase()) && t.startDate === start)
+    );
+
+    if (existing) {
+      addToast('This plan is already saved in your My Trips workspace! 📁', 'info');
+      return existing;
+    }
+
+    const bookingId = `PLAN-${Math.floor(10000 + Math.random() * 90000)}`;
+    const tripTitle = plan.tripTitle || `${destName} Smart Trip Plan`;
+    const originName = plan.originCity || (typeof plan.origin === 'string' ? plan.origin.split(',')[0].trim() : plan.origin?.city || 'Delhi');
+    const datesStr = plan.dates
+      ? (typeof plan.dates === 'string' ? plan.dates : `${plan.dates.start || start} – ${plan.dates.end || end}`)
+      : `${plan.days || 4} Days / ${plan.nights || 3} Nights`;
+    const totalEst = plan.totalBudget || plan.budgetData?.totalCost || 0;
+
+    const checklistItems = [
+      'Valid Govt Photo ID (Aadhaar / Passport)',
+      'Comfortable walking / trekking shoes',
+      'Weather-appropriate layers & windcheater',
+      'Personal emergency medicines & basic kit',
+      'High-capacity power bank & charging cables',
+    ];
+
+    const newSavedPlan = {
+      bookingId,
+      tripId: plan.id || `plan_${Date.now()}`,
+      planKey,
+      tripTitle,
+      destination: plan.destinationFullName || plan.destination || destName,
+      status: 'saved',
+      isSavedPlan: true,
+      dates: datesStr,
+      startDate: start || new Date().toISOString().split('T')[0],
+      travelers: travelersCount,
+      totalPaid: totalEst,
+      image:
+        plan.stayRecommendation?.image ||
+        plan.stayDetails?.image ||
+        'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80',
+      organizer: 'Smart Planner (Custom)',
+      meetingPoint: `Departure from ${originName}`,
+      transportInfo: plan.transportRecommendation?.method || 'Smart-selected Transit',
+      stayInfo: plan.stayRecommendation?.name
+        ? `${plan.stayRecommendation.name} (${plan.stayRecommendation.type})`
+        : 'Curated Stay',
+      budgetTracker: {
+        target: plan.userTargetBudget || totalEst || 20000,
+        spent: totalEst,
+        expenses: (plan.budgetBreakdown || []).map((b, i) => ({
+          id: `exp_p_${i}`,
+          item: b.category,
+          amount: b.amount,
+          category: b.key || 'Itinerary',
+        })),
+      },
+      packingChecklist: checklistItems.map((text, idx) => ({
+        id: `chk_p_${idx}`,
+        text,
+        done: false,
+      })),
+      smartPlanData: plan,
+    };
+
+    setMyTrips((prev) => [newSavedPlan, ...prev]);
+
+    // Notification
+    const newNotif = {
+      id: `notif_${Date.now()}`,
+      title: 'Smart Plan Saved! 📁',
+      desc: `"${tripTitle}" has been saved to your My Trips workspace.`,
+      time: 'Just now',
+      unread: true,
+      link: { page: 'my-trips', params: { tab: 'saved' } },
+    };
+    setNotifications((prev) => [newNotif, ...prev]);
+
+    addToast(`"${tripTitle}" saved to My Trips! 📁`, 'success');
+    return newSavedPlan;
+  };
+
   const generatePlan = async (criteria = {}) => {
     const destination = criteria.destination || criteria.destinationObj || (selectedLocation ? selectedLocation.fullName : null);
     const origin = criteria.origin || criteria.startingLocation || criteria.originObj || null;
 
     if (!destination || !origin) {
-      addToast('Please select both your starting location and destination.', 'error');
-      return null;
+      const err = new Error('Please select both your starting location and destination.');
+      addToast(err.message, 'error');
+      throw err;
     }
 
     try {
@@ -802,8 +898,9 @@ export function StoreProvider({ children }) {
       return generated;
     } catch (error) {
       console.error('Smart Planner generation failed:', error);
-      addToast('We could not build this trip right now. Please check the locations and try again.', 'error');
-      return null;
+      const userMessage = error?.message || 'We could not build this trip right now. Please check the locations and try again.';
+      addToast(userMessage, 'error', 4500);
+      throw error;
     }
   };
 
@@ -867,6 +964,7 @@ export function StoreProvider({ children }) {
         conversations,
         notifications,
         smartPlan,
+        setSmartPlan,
         selectedLocation,
         setSelectedLocation,
         myTrips,
@@ -894,6 +992,7 @@ export function StoreProvider({ children }) {
         toggleStoryLike,
         addStory,
         generatePlan,
+        saveGeneratedPlan,
         removePlanActivity,
         addPlanActivity,
         togglePackingItem,
@@ -910,6 +1009,7 @@ export function StoreProvider({ children }) {
         // Toasts
         toasts,
         addToast,
+        showToast: addToast,
         removeToast,
 
         // Global Modals State

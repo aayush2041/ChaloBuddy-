@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useStore } from '../context/StoreContext';
 import {
   Calendar,
@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   CheckSquare,
   Square,
+  Sparkles,
 } from 'lucide-react';
 
 export default function MyTripsPage() {
@@ -27,18 +28,31 @@ export default function MyTripsPage() {
     addPackingItem,
     addWorkspaceExpense,
     setActiveConvId,
+    setSmartPlan,
     navigate,
     currentRoute,
   } = useStore();
 
   const [activeStatusTab, setActiveStatusTab] = useState(
     currentRoute?.params?.tab || 'upcoming'
-  ); // 'upcoming' | 'ongoing' | 'past'
+  ); // 'upcoming' | 'ongoing' | 'past' | 'saved'
+
+  useEffect(() => {
+    if (currentRoute?.params?.tab) {
+      setActiveStatusTab(currentRoute.params.tab);
+    }
+  }, [currentRoute?.params?.tab]);
 
   const filteredTrips = myTrips.filter((t) => t.status === activeStatusTab);
   const [selectedTripId, setSelectedTripId] = useState(filteredTrips[0]?.bookingId || myTrips[0]?.bookingId);
 
-  const selectedTrip = myTrips.find((t) => t.bookingId === selectedTripId) || myTrips[0];
+  useEffect(() => {
+    if (filteredTrips.length > 0 && !filteredTrips.some((t) => t.bookingId === selectedTripId)) {
+      setSelectedTripId(filteredTrips[0].bookingId);
+    }
+  }, [activeStatusTab, filteredTrips, selectedTripId]);
+
+  const selectedTrip = myTrips.find((t) => t.bookingId === selectedTripId) || filteredTrips[0] || myTrips[0];
 
   // Workspace internal tabs
   const [workspaceTab, setWorkspaceTab] = useState('overview'); // 'overview' | 'itinerary' | 'people' | 'stay' | 'transport' | 'budget' | 'notes'
@@ -90,12 +104,13 @@ export default function MyTripsPage() {
             Manage your booked journeys, coordinate with organizers, track shared expenses, and access offline notes.
           </p>
 
-          {/* Status Tabs: Upcoming, Ongoing, Past */}
-          <div className="flex items-center gap-2 pt-2">
+          {/* Status Tabs: Upcoming, Ongoing, Past, Saved Plans */}
+          <div className="flex items-center gap-2 pt-2 flex-wrap">
             {[
               { id: 'upcoming', label: 'Upcoming' },
               { id: 'ongoing', label: 'Ongoing' },
               { id: 'past', label: 'Past Trips' },
+              { id: 'saved', label: 'Saved Plans' },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -118,13 +133,19 @@ export default function MyTripsPage() {
         {filteredTrips.length === 0 ? (
           <div className="bg-white p-12 rounded-3xl text-center space-y-4 border border-slate-200">
             <Calendar className="w-10 h-10 text-[#FF5A1F] mx-auto" />
-            <h3 className="font-bold text-base text-[#071A2B]">No {activeStatusTab} trips found</h3>
-            <p className="text-xs text-slate-500">Ready for an adventure? Find and join an upcoming group trip.</p>
+            <h3 className="font-bold text-base text-[#071A2B]">
+              {activeStatusTab === 'saved' ? 'No saved plans found' : `No ${activeStatusTab} trips found`}
+            </h3>
+            <p className="text-xs text-slate-500">
+              {activeStatusTab === 'saved'
+                ? 'Generate a realistic custom itinerary with Smart Planner and save it here to access anytime.'
+                : 'Ready for an adventure? Find and join an upcoming group trip.'}
+            </p>
             <button
-              onClick={() => navigate('trips')}
+              onClick={() => navigate(activeStatusTab === 'saved' ? 'plan-trip' : 'trips')}
               className="btn-primary-cb !py-2.5 !px-6 !text-xs font-bold"
             >
-              Explore Trips →
+              {activeStatusTab === 'saved' ? 'Open Smart Planner →' : 'Explore Trips →'}
             </button>
           </div>
         ) : (
@@ -177,13 +198,26 @@ export default function MyTripsPage() {
               </div>
 
               <div className="flex items-center gap-2">
-                <button
-                  onClick={handleOpenGroupChat}
-                  className="btn-primary-cb !py-2 !px-4 !text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-md shadow-[#FF5A1F]/30"
-                >
-                  <MessageCircle className="w-4 h-4" />
-                  <span>Group Chat</span>
-                </button>
+                {selectedTrip.isSavedPlan && selectedTrip.smartPlanData ? (
+                  <button
+                    onClick={() => {
+                      setSmartPlan(selectedTrip.smartPlanData);
+                      navigate('plan-result');
+                    }}
+                    className="btn-primary-cb !py-2 !px-4 !text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-md shadow-[#FF5A1F]/30"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    <span>View Full Smart Plan</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleOpenGroupChat}
+                    className="btn-primary-cb !py-2 !px-4 !text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-md shadow-[#FF5A1F]/30"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    <span>Group Chat</span>
+                  </button>
+                )}
               </div>
             </div>
 

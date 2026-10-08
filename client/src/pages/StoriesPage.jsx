@@ -36,11 +36,25 @@ export default function StoriesPage() {
 
       {/* Stories Grid */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-          {stories.map((story) => (
-            <StoryCard key={story.id} story={story} />
-          ))}
-        </div>
+        {stories.length === 0 ? (
+          <div className="bg-white p-12 rounded-3xl text-center space-y-4 border border-slate-200">
+            <Compass className="w-10 h-10 text-[#FF5A1F] mx-auto" />
+            <h3 className="font-bold text-base text-[#071A2B]">No stories published yet</h3>
+            <p className="text-xs text-slate-500">Be the first to share an inspiring travel adventure with the community.</p>
+            <button
+              onClick={() => setWriteStoryModalOpen(true)}
+              className="btn-primary-cb !py-2.5 !px-6 !text-xs font-bold cursor-pointer"
+            >
+              Share Your Story →
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+            {stories.map((story) => (
+              <StoryCard key={story.id} story={story} />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
