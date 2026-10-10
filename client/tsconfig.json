@@ -4,6 +4,9 @@
     "module": "esnext",
     "lib": ["ES2023", "DOM"],
     "types": ["vite/client"],
+    "allowJs": true,
+    "checkJs": false,
+    "jsx": "react-jsx",
     "allowArbitraryExtensions": true,
     "skipLibCheck": true,
 

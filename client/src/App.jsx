@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, Suspense, lazy } from 'react';
 import { useStore } from './context/StoreContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -15,25 +15,25 @@ import WriteStoryModal from './components/WriteStoryModal';
 import WriteReviewModal from './components/WriteReviewModal';
 import AuthModal from './components/AuthModal';
 
-// Pages
-import HomePage from './pages/HomePage';
-import TripsPage from './pages/TripsPage';
-import TripDetailPage from './pages/TripDetailPage';
-import ListTripPage from './pages/ListTripPage';
-import PlanTripPage from './pages/PlanTripPage';
-import PlanResultPage from './pages/PlanResultPage';
-import StaysPage from './pages/StaysPage';
-import StayDetailPage from './pages/StayDetailPage';
-import BuddiesPage from './pages/BuddiesPage';
-import UserProfilePage from './pages/UserProfilePage';
-import MessagesPage from './pages/MessagesPage';
-import MyTripsPage from './pages/MyTripsPage';
-import SavedPage from './pages/SavedPage';
-import StoriesPage from './pages/StoriesPage';
-import AboutPage from './pages/AboutPage';
-import LoginPage from './pages/LoginPage';
-import SignupPage from './pages/SignupPage';
-import AdminDashboardPage from './pages/AdminDashboardPage';
+// Pages (Code-split with React.lazy)
+const HomePage = lazy(() => import('./pages/HomePage'));
+const TripsPage = lazy(() => import('./pages/TripsPage'));
+const TripDetailPage = lazy(() => import('./pages/TripDetailPage'));
+const ListTripPage = lazy(() => import('./pages/ListTripPage'));
+const PlanTripPage = lazy(() => import('./pages/PlanTripPage'));
+const PlanResultPage = lazy(() => import('./pages/PlanResultPage'));
+const StaysPage = lazy(() => import('./pages/StaysPage'));
+const StayDetailPage = lazy(() => import('./pages/StayDetailPage'));
+const BuddiesPage = lazy(() => import('./pages/BuddiesPage'));
+const UserProfilePage = lazy(() => import('./pages/UserProfilePage'));
+const MessagesPage = lazy(() => import('./pages/MessagesPage'));
+const MyTripsPage = lazy(() => import('./pages/MyTripsPage'));
+const SavedPage = lazy(() => import('./pages/SavedPage'));
+const StoriesPage = lazy(() => import('./pages/StoriesPage'));
+const AboutPage = lazy(() => import('./pages/AboutPage'));
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const SignupPage = lazy(() => import('./pages/SignupPage'));
+const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage'));
 
 export default function App() {
   const { currentRoute, navigate } = useStore();
@@ -138,7 +138,15 @@ export default function App() {
 
       {/* Main Page View */}
       <main className="flex-1">
-        {renderCurrentPage()}
+        <Suspense
+          fallback={
+            <div className="flex items-center justify-center min-h-[60vh]">
+              <div className="w-8 h-8 border-3 border-[#FF5A1F] border-t-transparent rounded-full animate-spin" />
+            </div>
+          }
+        >
+          {renderCurrentPage()}
+        </Suspense>
       </main>
 
       {/* Global Interactive Modals */}
