@@ -169,7 +169,7 @@ export default function ListTripPage() {
         formData.description.trim().slice(0, 100) ||
         `Scenic group adventure from ${startCity} to ${destCity} departing at ${formData.departureTime}.`;
 
-      const created = addNewTrip({
+      const created = await addNewTrip({
         title: tripTitle,
         subtitle: tripSubtitle,
         startingLocation: formData.startingLocation.trim(),

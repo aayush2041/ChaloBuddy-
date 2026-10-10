@@ -27,7 +27,7 @@ export default function MyTripsPage() {
     togglePackingItem,
     addPackingItem,
     addWorkspaceExpense,
-    setActiveConvId,
+    openTripRoom,
     setSmartPlan,
     navigate,
     currentRoute,
@@ -85,8 +85,7 @@ export default function MyTripsPage() {
   };
 
   const handleOpenGroupChat = () => {
-    setActiveConvId('conv-manali-group');
-    navigate('messages');
+    openTripRoom(selectedTrip);
   };
 
   return (

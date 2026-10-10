@@ -31,7 +31,7 @@ export default function TripDetailPage() {
     setShareModalData,
     setWriteReviewModalData,
     navigate,
-    setActiveConvId,
+    openDirectChatWithUser,
   } = useStore();
 
   const tripId = currentRoute.params?.id || 'trip-spiti-valley';
@@ -42,8 +42,7 @@ export default function TripDetailPage() {
   const saved = isTripSaved(trip.id);
 
   const handleAskOrganizer = () => {
-    setActiveConvId('conv-aarav-direct');
-    navigate('messages');
+    openDirectChatWithUser(trip.organizer?.id || 'usr_aarav');
   };
 
   return (

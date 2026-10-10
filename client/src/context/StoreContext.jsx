@@ -11,6 +11,7 @@ import {
 } from '../data/seedData';
 import { generateTripPlan } from '../services/tripPlannerService';
 import { getTripStartingLocation } from '../services/tripSearchService';
+import { apiClient } from '../services/apiClient';
 
 const StoreContext = createContext(null);
 
@@ -401,7 +402,19 @@ export function StoreProvider({ children }) {
     addToast(`Switched active profile to ${targetUser.name}`, 'info');
   };
 
-  const loginUser = (email, password) => {
+  const loginUser = async (email, password) => {
+    try {
+      const res = await apiClient.auth.login(email, password);
+      if (res.success && res.user) {
+        setCurrentUser(res.user);
+        setAuthModalOpen(false);
+        addToast(`Welcome back, ${res.user.name}!`, 'success');
+        return res.user;
+      }
+    } catch {
+      // offline fallback
+    }
+
     const matched = INITIAL_USERS.find((u) => u.email.toLowerCase() === email.toLowerCase()) || {
       id: `usr_${Date.now()}`,
       name: email.split('@')[0],
@@ -421,9 +434,15 @@ export function StoreProvider({ children }) {
     setCurrentUser(matched);
     setAuthModalOpen(false);
     addToast(`Welcome back, ${matched.name}!`, 'success');
+    return matched;
   };
 
-  const logoutUser = () => {
+  const logoutUser = async () => {
+    try {
+      await apiClient.auth.logout();
+    } catch {
+      // offline fallback
+    }
     setCurrentUser(null);
     addToast('Signed out of ChaloBuddy', 'info');
   };
@@ -491,13 +510,28 @@ export function StoreProvider({ children }) {
   };
 
   // Trip Joining Operation (Section 10)
-  const joinTrip = (tripId, requestData) => {
+  const joinTrip = async (tripId, requestData) => {
     const targetTrip = trips.find((t) => t.id === tripId);
     if (!targetTrip) return;
 
     const travelersCount = Number(requestData.travelersCount || 1);
     const bookingId = `BK-${Math.floor(10000 + Math.random() * 90000)}`;
     const totalAmount = targetTrip.price * travelersCount;
+
+    try {
+      const res = await apiClient.trips.submitJoinRequest(tripId, {
+        travelersCount,
+        message: requestData.messageToOrganizer || 'Looking forward to joining!',
+        emergencyContact: requestData.emergencyContact,
+        specialRequests: requestData.specialRequirements,
+      });
+
+      if (res.success) {
+        addToast(`Join request submitted to ${targetTrip.organizer.name}! Pending approval.`, 'success');
+      }
+    } catch {
+      // offline fallback
+    }
 
     const newBooking = {
       bookingId,
@@ -546,8 +580,8 @@ export function StoreProvider({ children }) {
     // Add a Notification
     const newNotif = {
       id: `notif_${Date.now()}`,
-      title: 'Trip Request Confirmed! 🎒',
-      desc: `You have successfully joined "${targetTrip.title}". Group workspace is now active!`,
+      title: 'Trip Request Sent! 🎒',
+      desc: `Your request for "${targetTrip.title}" has been sent to ${targetTrip.organizer.name}.`,
       time: 'Just now',
       unread: true,
       link: { page: 'my-trips', params: { tab: 'upcoming' } },
@@ -594,7 +628,18 @@ export function StoreProvider({ children }) {
   };
 
   // List a Trip Operation (Section 5)
-  const addNewTrip = (newTripData) => {
+  const addNewTrip = async (newTripData) => {
+    try {
+      const res = await apiClient.trips.create(newTripData);
+      if (res.success && res.trip) {
+        setTrips((prev) => [res.trip, ...prev]);
+        addToast(`Trip "${res.trip.title}" published successfully to platform!`, 'success');
+        return res.trip;
+      }
+    } catch {
+      // offline fallback
+    }
+
     const newTrip = {
       id: `trip-${Date.now()}`,
       rating: 5.0,
@@ -744,6 +789,35 @@ export function StoreProvider({ children }) {
         })
       );
     }, 2500);
+  };
+
+  // Dynamic Conversation Openers (Fixes hardcoded chat BUG-05)
+  const openDirectChatWithUser = async (targetUser) => {
+    if (!targetUser) return;
+    const targetId = typeof targetUser === 'string' ? targetUser : targetUser.id;
+    try {
+      const res = await apiClient.conversations.getOrCreateDirect(targetId);
+      if (res.success && res.conversationId) {
+        setActiveConvId(res.conversationId);
+        navigate('messages');
+        return;
+      }
+    } catch {
+      // offline fallback
+    }
+    setActiveConvId('conv-aarav-direct');
+    navigate('messages');
+  };
+
+  const openTripRoom = (targetTrip) => {
+    if (!targetTrip) return;
+    if (targetTrip.conversationId) {
+      setActiveConvId(targetTrip.conversationId);
+      navigate('messages');
+      return;
+    }
+    setActiveConvId('conv-manali-group');
+    navigate('messages');
   };
 
   // Stories Operations (Section 18)
@@ -989,6 +1063,8 @@ export function StoreProvider({ children }) {
         sendMessage,
         activeConvId,
         setActiveConvId,
+        openDirectChatWithUser,
+        openTripRoom,
         toggleStoryLike,
         addStory,
         generatePlan,

@@ -25,7 +25,7 @@ export default function UserProfilePage() {
     currentRoute,
     toggleBuddyConnect,
     navigate,
-    setActiveConvId,
+    openDirectChatWithUser,
   } = useStore();
 
   const userId = currentRoute.params?.id || 'usr_priya';
@@ -47,8 +47,7 @@ export default function UserProfilePage() {
   );
 
   const handleMessageUser = () => {
-    setActiveConvId('conv-aarav-direct');
-    navigate('messages');
+    openDirectChatWithUser(user.id);
   };
 
   return (

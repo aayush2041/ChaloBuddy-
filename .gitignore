@@ -29,10 +29,11 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# Database & Uploads for local development (optional)
+# Database & Local Uploads
+*.db
 *.db-shm
 *.db-wal
-server/
+server/uploads/
 
 # Temporary / Scratch Files
 scratch/

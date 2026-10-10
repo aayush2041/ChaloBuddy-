@@ -1,0 +1,268 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  TRAVELER
+  ORGANIZER
+  ADMIN
+}
+
+enum RequestStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  CANCELLED
+}
+
+enum TripStatus {
+  DRAFT
+  PUBLISHED
+  ONGOING
+  COMPLETED
+  CANCELLED
+}
+
+model User {
+  id              String         @id @default(cuid())
+  email           String         @unique
+  passwordHash    String
+  name            String
+  avatar          String?
+  role            Role           @default(TRAVELER)
+  verified        Boolean        @default(false)
+  phone           String?
+  bio             String?
+  location        String?
+  travelStyle     String[]
+  interests       String[]
+  languages       String[]
+  rating          Float          @default(5.0)
+  tripsHosted     Int            @default(0)
+  tripsCompleted  Int            @default(0)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  hostedTrips     Trip[]         @relation("HostedTrips")
+  joinRequests    JoinRequest[]  @relation("TravelerRequests")
+  participations  TripParticipant[]
+  sentMessages    Message[]      @relation("SentMessages")
+  conversations   ConversationParticipant[]
+  reviewsWritten  Review[]       @relation("ReviewsWritten")
+  stories         Story[]
+  savedTrips      SavedTrip[]
+  stayBookings    StayBooking[]
+  notifications   Notification[]
+}
+
+model Trip {
+  id               String          @id @default(cuid())
+  title            String
+  subtitle         String?
+  startingLocation String
+  destination      String
+  destinationLat   Float?
+  destinationLng   Float?
+  startDate        DateTime
+  endDate          DateTime
+  duration         String
+  price            Decimal         @db.Decimal(10, 2)
+  maxGroupSize     Int             @default(8)
+  spotsLeft        Int             @default(7)
+  status           TripStatus      @default(PUBLISHED)
+  difficulty       String          @default("Moderate")
+  meetingPoint     String
+  transport        String
+  stayDetails      String?
+  about            String?
+  included         String[]
+  excluded         String[]
+  images           String[]
+  vibes            String[]
+  featured         Boolean         @default(false)
+  rating           Float           @default(5.0)
+  reviewCount      Int             @default(0)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  organizerId      String
+  organizer        User            @relation("HostedTrips", fields: [organizerId], references: [id])
+  requests         JoinRequest[]
+  participants     TripParticipant[]
+  conversationId   String?         @unique
+  conversation     Conversation?   @relation(fields: [conversationId], references: [id])
+  reviews          Review[]
+  savedBy          SavedTrip[]
+
+  @@index([destination])
+  @@index([startDate])
+  @@index([status])
+}
+
+model JoinRequest {
+  id               String         @id @default(cuid())
+  tripId           String
+  trip             Trip           @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  travelerId       String
+  traveler         User           @relation("TravelerRequests", fields: [travelerId], references: [id])
+  travelersCount   Int            @default(1)
+  status           RequestStatus  @default(PENDING)
+  totalAmount      Decimal        @db.Decimal(10, 2)
+  message          String?
+  emergencyContact String?
+  specialRequests  String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@unique([tripId, travelerId])
+  @@index([tripId])
+  @@index([travelerId])
+}
+
+model TripParticipant {
+  id              String         @id @default(cuid())
+  tripId          String
+  trip            Trip           @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User           @relation(fields: [userId], references: [id])
+  seatsBooked     Int            @default(1)
+  joinedAt        DateTime       @default(now())
+
+  @@unique([tripId, userId])
+  @@index([tripId])
+  @@index([userId])
+}
+
+model Conversation {
+  id              String         @id @default(cuid())
+  title           String?
+  isGroup         Boolean        @default(false)
+  tripId          String?        @unique
+  trip            Trip?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  participants    ConversationParticipant[]
+  messages        Message[]
+}
+
+model ConversationParticipant {
+  id              String         @id @default(cuid())
+  conversationId  String
+  conversation    Conversation   @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User           @relation(fields: [userId], references: [id])
+  joinedAt        DateTime       @default(now())
+
+  @@unique([conversationId, userId])
+  @@index([conversationId])
+  @@index([userId])
+}
+
+model Message {
+  id              String         @id @default(cuid())
+  conversationId  String
+  conversation    Conversation   @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId        String
+  sender          User           @relation("SentMessages", fields: [senderId], references: [id])
+  content         String
+  imageUrl        String?
+  createdAt       DateTime       @default(now())
+
+  @@index([conversationId, createdAt])
+}
+
+model Review {
+  id              String         @id @default(cuid())
+  tripId          String
+  trip            Trip           @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  authorId        String
+  author          User           @relation("ReviewsWritten", fields: [authorId], references: [id])
+  rating          Int            @default(5)
+  comment         String
+  createdAt       DateTime       @default(now())
+
+  @@index([tripId])
+}
+
+model Story {
+  id              String         @id @default(cuid())
+  authorId        String
+  author          User           @relation(fields: [authorId], references: [id])
+  title           String
+  location        String
+  content         String
+  image           String
+  likes           Int            @default(0)
+  createdAt       DateTime       @default(now())
+
+  @@index([authorId])
+}
+
+model Stay {
+  id              String         @id @default(cuid())
+  name            String
+  location        String
+  lat             Float?
+  lng             Float?
+  type            String         @default("Homestay")
+  pricePerNight   Decimal        @db.Decimal(10, 2)
+  rating          Float          @default(4.9)
+  reviewCount     Int            @default(0)
+  images          String[]
+  amenities       String[]
+  description     String?
+  hostName        String?
+  hostVerified    Boolean        @default(true)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  bookings        StayBooking[]
+}
+
+model StayBooking {
+  id              String         @id @default(cuid())
+  stayId          String
+  stay            Stay           @relation(fields: [stayId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User           @relation(fields: [userId], references: [id])
+  checkIn         DateTime
+  checkOut        DateTime
+  guests          Int            @default(1)
+  roomName        String?
+  totalAmount     Decimal        @db.Decimal(10, 2)
+  status          String         @default("confirmed")
+  createdAt       DateTime       @default(now())
+
+  @@index([userId])
+  @@index([stayId])
+}
+
+model SavedTrip {
+  id              String         @id @default(cuid())
+  userId          String
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tripId          String
+  trip            Trip           @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  savedAt         DateTime       @default(now())
+
+  @@unique([userId, tripId])
+  @@index([userId])
+}
+
+model Notification {
+  id              String         @id @default(cuid())
+  userId          String
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title           String
+  description     String
+  link            String?
+  unread          Boolean        @default(true)
+  createdAt       DateTime       @default(now())
+
+  @@index([userId, unread])
+}
