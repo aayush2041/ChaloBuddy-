@@ -4,94 +4,56 @@ import { authenticateToken } from '../auth.js';
 
 const router = Router();
 
-// GET /api/conversations - List conversations for authenticated user
+// GET /api/conversations - List conversations
 router.get('/', authenticateToken, async (req, res) => {
   try {
-    const userConvs = await prisma.conversationParticipant.findMany({
-      where: { userId: req.user.id },
+    const conversations = await prisma.conversation.findMany({
       include: {
-        conversation: {
+        Trip: {
+          select: { id: true, title: true, destination: true },
+        },
+        messages: {
+          take: 1,
+          orderBy: { createdAt: 'desc' },
           include: {
-            participants: {
-              include: {
-                user: {
-                  select: { id: true, name: true, avatar: true },
-                },
-              },
-            },
-            messages: {
-              take: 1,
-              orderBy: { createdAt: 'desc' },
-              include: {
-                sender: {
-                  select: { id: true, name: true },
-                },
-              },
-            },
-            trip: {
-              select: { id: true, title: true, destination: true },
+            sender: {
+              select: { id: true, name: true },
             },
           },
         },
       },
-      orderBy: { conversation: { updatedAt: 'desc' } },
+      orderBy: { createdAt: 'desc' },
     });
 
-    const formatted = userConvs.map((cp) => {
-      const c = cp.conversation;
-      const otherParticipant = c.participants.find((p) => p.userId !== req.user.id)?.user;
+    const formatted = conversations.map((c) => {
       const lastMsg = c.messages[0];
-
       return {
         id: c.id,
-        isGroup: c.isGroup,
-        name: c.isGroup
-          ? c.title || (c.trip ? `${c.trip.title} Room` : 'Group Expedition')
-          : otherParticipant?.name || 'Traveler',
-        avatar: c.isGroup
-          ? 'https://images.unsplash.com/photo-1510312305653-8ed496efae75?auto=format&fit=crop&w=200&q=80'
-          : otherParticipant?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
-        lastMessage: lastMsg ? `${lastMsg.sender.name}: ${lastMsg.content}` : 'No messages yet',
+        name: c.title || (c.Trip ? `${c.Trip.title} Group` : 'Travel Chat'),
+        avatar: 'https://images.unsplash.com/photo-1510312305653-8ed496efae75?auto=format&fit=crop&w=200&q=80',
+        lastMessage: lastMsg ? `${lastMsg.sender.name}: ${lastMsg.body}` : 'No messages yet',
         lastTime: lastMsg ? new Date(lastMsg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently',
         tripId: c.tripId,
-        participantCount: c.participants.length,
       };
     });
 
-    return res.json({ success: true, conversations: formatted });
+    return res.json({ success: true, count: formatted.length, conversations: formatted });
   } catch (err) {
     console.error('Fetch conversations error:', err);
     return res.status(500).json({ success: false, error: 'Failed to retrieve conversations.' });
   }
 });
 
-// GET /api/conversations/:id/messages - Get messages in a conversation
+// GET /api/conversations/:id/messages
 router.get('/:id/messages', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-
-    // Verify membership
-    const isMember = await prisma.conversationParticipant.findUnique({
-      where: {
-        conversationId_userId: {
-          conversationId: id,
-          userId: req.user.id,
-        },
-      },
-    });
-
-    if (!isMember) {
-      return res.status(403).json({
-        success: false,
-        error: 'You do not have permission to view messages in this room.',
-      });
-    }
 
     const messages = await prisma.message.findMany({
       where: { conversationId: id },
       include: {
         sender: {
-          select: { id: true, name: true, avatar: true },
+          include: { Profile: true },
         },
       },
       orderBy: { createdAt: 'asc' },
@@ -101,9 +63,8 @@ router.get('/:id/messages', authenticateToken, async (req, res) => {
       id: m.id,
       sender: m.sender.name,
       senderId: m.senderId,
-      avatar: m.sender.avatar,
-      text: m.content,
-      image: m.imageUrl,
+      avatar: m.sender.Profile?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80',
+      text: m.body,
       time: new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       isSelf: m.senderId === req.user.id,
     }));
@@ -115,63 +76,36 @@ router.get('/:id/messages', authenticateToken, async (req, res) => {
   }
 });
 
-// POST /api/conversations/:id/messages - Send a message
+// POST /api/conversations/:id/messages
 router.post('/:id/messages', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { text, imageUrl } = req.body;
+    const { text } = req.body;
 
-    if (!text?.trim() && !imageUrl) {
-      return res.status(400).json({ success: false, error: 'Message content or image is required.' });
+    if (!text?.trim()) {
+      return res.status(400).json({ success: false, error: 'Message content is required.' });
     }
 
-    const isMember = await prisma.conversationParticipant.findUnique({
-      where: {
-        conversationId_userId: {
-          conversationId: id,
-          userId: req.user.id,
+    const message = await prisma.message.create({
+      data: {
+        id: `msg_${Date.now()}`,
+        conversationId: id,
+        senderId: req.user.id,
+        body: text.trim(),
+      },
+      include: {
+        sender: {
+          include: { Profile: true },
         },
       },
-    });
-
-    if (!isMember) {
-      return res.status(403).json({
-        success: false,
-        error: 'You do not have permission to post messages in this room.',
-      });
-    }
-
-    const message = await prisma.$transaction(async (tx) => {
-      const msg = await tx.message.create({
-        data: {
-          conversationId: id,
-          senderId: req.user.id,
-          content: text?.trim() || 'Sent an image attachment',
-          imageUrl: imageUrl || null,
-        },
-        include: {
-          sender: {
-            select: { id: true, name: true, avatar: true },
-          },
-        },
-      });
-
-      // Update conversation timestamp
-      await tx.conversation.update({
-        where: { id },
-        data: { updatedAt: new Date() },
-      });
-
-      return msg;
     });
 
     const formatted = {
       id: message.id,
       sender: message.sender.name,
       senderId: message.senderId,
-      avatar: message.sender.avatar,
-      text: message.content,
-      image: message.imageUrl,
+      avatar: message.sender.Profile?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80',
+      text: message.body,
       time: new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       isSelf: true,
     };
@@ -183,47 +117,28 @@ router.post('/:id/messages', authenticateToken, async (req, res) => {
   }
 });
 
-// POST /api/conversations/direct - Get or create 1-on-1 direct conversation with another user
+// POST /api/conversations/direct - Direct Chat or Trip Room
 router.post('/direct', authenticateToken, async (req, res) => {
   try {
     const { recipientId } = req.body;
 
-    if (!recipientId || recipientId === req.user.id) {
-      return res.status(400).json({ success: false, error: 'Valid recipient user ID is required.' });
-    }
-
-    // Check if direct conversation already exists between these two users
-    const existing = await prisma.conversation.findFirst({
-      where: {
-        isGroup: false,
-        AND: [
-          { participants: { some: { userId: req.user.id } } },
-          { participants: { some: { userId: recipientId } } },
-        ],
-      },
+    let conv = await prisma.conversation.findFirst({
+      where: { title: `Chat with ${recipientId}` },
     });
 
-    if (existing) {
-      return res.json({ success: true, conversationId: existing.id });
-    }
-
-    // Create new direct conversation
-    const newConv = await prisma.conversation.create({
-      data: {
-        isGroup: false,
-        participants: {
-          create: [
-            { userId: req.user.id },
-            { userId: recipientId },
-          ],
+    if (!conv) {
+      conv = await prisma.conversation.create({
+        data: {
+          id: `conv_${Date.now()}`,
+          title: `Chat with ${recipientId}`,
         },
-      },
-    });
+      });
+    }
 
-    return res.status(201).json({ success: true, conversationId: newConv.id });
+    return res.json({ success: true, conversationId: conv.id });
   } catch (err) {
-    console.error('Create direct conversation error:', err);
-    return res.status(500).json({ success: false, error: 'Failed to initialize conversation.' });
+    console.error('Direct chat error:', err);
+    return res.status(500).json({ success: false, error: 'Failed to open conversation.' });
   }
 });
 

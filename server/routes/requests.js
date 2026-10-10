@@ -8,176 +8,126 @@ const router = Router();
 router.put('/:id/respond', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { action, reason } = req.body; // 'ACCEPT' | 'REJECT'
+    const { action } = req.body; // 'ACCEPT' | 'REJECT' (maps to ACCEPTED / DECLINED)
 
-    if (!['ACCEPT', 'REJECT'].includes(action)) {
-      return res.status(400).json({ success: false, error: 'Action must be ACCEPT or REJECT.' });
-    }
-
-    const joinRequest = await prisma.joinRequest.findUnique({
+    const tripRequest = await prisma.tripRequest.findUnique({
       where: { id },
       include: {
-        trip: {
-          include: {
-            conversation: true,
-          },
+        Trip: {
+          include: { TripMember: true },
         },
-        traveler: true,
+        User: true,
       },
     });
 
-    if (!joinRequest) {
-      return res.status(404).json({ success: false, error: 'Join request not found.' });
+    if (!tripRequest) {
+      return res.status(404).json({ success: false, error: 'Request not found.' });
     }
 
-    // Verify current user is the organizer of the trip
-    if (joinRequest.trip.organizerId !== req.user.id) {
+    if (tripRequest.Trip.creatorId !== req.user.id) {
       return res.status(403).json({
         success: false,
         error: 'Only the trip organizer can respond to this request.',
       });
     }
 
-    if (joinRequest.status !== 'PENDING') {
+    if (tripRequest.status !== 'PENDING') {
       return res.status(400).json({
         success: false,
-        error: `This request has already been ${joinRequest.status.toLowerCase()}.`,
+        error: `This request has already been ${tripRequest.status.toLowerCase()}.`,
       });
     }
 
     if (action === 'ACCEPT') {
-      // ATOMIC TRANSACTION: Decrement seats, add participant, join trip conversation
+      const remainingSpots = tripRequest.Trip.groupSize - (tripRequest.Trip.TripMember.length + 1);
+      if (remainingSpots < 1) {
+        return res.status(400).json({
+          success: false,
+          error: 'This trip is already at full capacity.',
+        });
+      }
+
       const result = await prisma.$transaction(async (tx) => {
-        // 1. Double-check available spots inside transaction
-        const currentTrip = await tx.trip.findUnique({
-          where: { id: joinRequest.tripId },
-        });
-
-        if (currentTrip.spotsLeft < joinRequest.travelersCount) {
-          throw new Error(`Insufficient spots remaining (only ${currentTrip.spotsLeft} left).`);
-        }
-
-        // 2. Decrement spotsLeft
-        const updatedTrip = await tx.trip.update({
-          where: { id: joinRequest.tripId },
+        // 1. Add traveler to TripMember
+        const member = await tx.tripMember.create({
           data: {
-            spotsLeft: { decrement: joinRequest.travelersCount },
+            id: `mem_${Date.now()}`,
+            tripId: tripRequest.tripId,
+            userId: tripRequest.requesterId,
           },
         });
 
-        // 3. Create TripParticipant record
-        const participant = await tx.tripParticipant.create({
-          data: {
-            tripId: joinRequest.tripId,
-            userId: joinRequest.travelerId,
-            seatsBooked: joinRequest.travelersCount,
-          },
-        });
-
-        // 4. Add traveler to the Trip Room Conversation
-        if (joinRequest.trip.conversationId) {
-          await tx.conversationParticipant.upsert({
-            where: {
-              conversationId_userId: {
-                conversationId: joinRequest.trip.conversationId,
-                userId: joinRequest.travelerId,
-              },
-            },
-            create: {
-              conversationId: joinRequest.trip.conversationId,
-              userId: joinRequest.travelerId,
-            },
-            update: {},
-          });
-
-          // Post a system welcome message
-          await tx.message.create({
-            data: {
-              conversationId: joinRequest.trip.conversationId,
-              senderId: req.user.id,
-              content: `🎉 ${joinRequest.traveler.name} joined the expedition! Welcome to the group!`,
-            },
-          });
-        }
-
-        // 5. Update request status
-        const updatedRequest = await tx.joinRequest.update({
+        // 2. Mark request as ACCEPTED
+        const updatedReq = await tx.tripRequest.update({
           where: { id },
-          data: { status: 'ACCEPTED' },
+          data: { status: 'ACCEPTED', updatedAt: new Date() },
         });
 
-        // 6. Notify the traveler
+        // 3. Notify traveler
         await tx.notification.create({
           data: {
-            userId: joinRequest.travelerId,
+            id: `notif_${Date.now()}`,
+            userId: tripRequest.requesterId,
+            type: 'JOIN_ACCEPTED',
             title: 'Trip Request Accepted! 🎒',
-            desc: `Your request to join "${joinRequest.trip.title}" was accepted! You are now in the Trip Room.`,
-            link: `#/my-trips/upcoming`,
+            body: `You are officially confirmed for "${tripRequest.Trip.title}". Group workspace is active!`,
           },
         });
 
-        return { updatedTrip, updatedRequest, participant };
+        return { member, updatedReq };
       });
 
       return res.json({
         success: true,
         action: 'ACCEPTED',
-        message: `${joinRequest.traveler.name} has been added to the trip!`,
+        message: `${tripRequest.User.name} has been added to the trip!`,
         result,
       });
     } else {
-      // REJECT action
-      const updatedRequest = await prisma.$transaction(async (tx) => {
-        const reqUpdated = await tx.joinRequest.update({
-          where: { id },
-          data: { status: 'REJECTED' },
-        });
+      const updatedReq = await prisma.tripRequest.update({
+        where: { id },
+        data: { status: 'DECLINED', updatedAt: new Date() },
+      });
 
-        await tx.notification.create({
-          data: {
-            userId: joinRequest.travelerId,
-            title: 'Trip Request Update',
-            desc: `The host was unable to accept your request for "${joinRequest.trip.title}"${reason ? `: ${reason}` : '.'}`,
-            link: `#/trips`,
-          },
-        });
-
-        return reqUpdated;
+      await prisma.notification.create({
+        data: {
+          id: `notif_${Date.now()}`,
+          userId: tripRequest.requesterId,
+          type: 'JOIN_DECLINED',
+          title: 'Trip Request Update',
+          body: `The organizer was unable to accept your request for "${tripRequest.Trip.title}".`,
+        },
       });
 
       return res.json({
         success: true,
-        action: 'REJECTED',
-        message: `Request from ${joinRequest.traveler.name} has been declined.`,
-        request: updatedRequest,
+        action: 'DECLINED',
+        message: 'Request declined.',
+        request: updatedReq,
       });
     }
   } catch (err) {
-    console.error('Respond to request error:', err);
-    return res.status(400).json({
-      success: false,
-      error: err.message || 'Failed to process request response.',
-    });
+    console.error('Respond request error:', err);
+    return res.status(500).json({ success: false, error: 'Failed to process request.' });
   }
 });
 
 // GET /api/requests/me - Get current user's join requests
 router.get('/me', authenticateToken, async (req, res) => {
   try {
-    const requests = await prisma.joinRequest.findMany({
-      where: { travelerId: req.user.id },
+    const requests = await prisma.tripRequest.findMany({
+      where: { requesterId: req.user.id },
       include: {
-        trip: {
+        Trip: {
           select: {
             id: true,
             title: true,
             destination: true,
             startDate: true,
-            price: true,
-            images: true,
+            budgetMin: true,
             status: true,
-            organizer: {
-              select: { id: true, name: true, avatar: true },
+            User: {
+              select: { id: true, name: true },
             },
           },
         },
@@ -187,8 +137,8 @@ router.get('/me', authenticateToken, async (req, res) => {
 
     return res.json({ success: true, count: requests.length, requests });
   } catch (err) {
-    console.error('Fetch user requests error:', err);
-    return res.status(500).json({ success: false, error: 'Failed to retrieve your join requests.' });
+    console.error('Fetch requests error:', err);
+    return res.status(500).json({ success: false, error: 'Failed to retrieve your requests.' });
   }
 });
 

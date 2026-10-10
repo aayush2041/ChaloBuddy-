@@ -4,10 +4,26 @@ import { hashPassword, verifyPassword, generateToken, authenticateToken } from '
 
 const router = Router();
 
+// Helper to format safe user object with Profile & Verification
+function formatSafeUser(user) {
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    avatar: user.Profile?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+    bio: user.Profile?.bio || '',
+    location: user.Profile?.city || 'India',
+    rating: user.Profile?.companionRating || 5.0,
+    tripsCompleted: user.Profile?.tripsCompleted || 0,
+    verified: Boolean(user.Verification?.verified),
+    role: 'traveler',
+  };
+}
+
 // POST /api/auth/register
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, password, phone, role } = req.body;
+    const { name, email, password } = req.body;
 
     if (!name || !name.trim()) {
       return res.status(400).json({ success: false, error: 'Full name is required.' });
@@ -37,14 +53,25 @@ router.post('/register', async (req, res) => {
         name: name.trim(),
         email: normalizedEmail,
         passwordHash,
-        phone: phone?.trim() || null,
-        role: role === 'ORGANIZER' ? 'ORGANIZER' : 'TRAVELER',
-        avatar: `https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80`,
-        bio: 'Ready to explore mountain trails and scenic views.',
-        location: 'India',
-        travelStyle: ['Adventure', 'Backpacking'],
-        interests: ['Trekking', 'Campfires'],
-        languages: ['English', 'Hindi'],
+        Profile: {
+          create: {
+            id: `prof_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+            avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+            bio: 'Ready to explore mountain trails and scenic views.',
+            city: 'India',
+            companionRating: 5.0,
+          },
+        },
+        Verification: {
+          create: {
+            id: `verif_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+            verified: true,
+          },
+        },
+      },
+      include: {
+        Profile: true,
+        Verification: true,
       },
     });
 
@@ -58,11 +85,10 @@ router.post('/register', async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
-    const { passwordHash: _, ...safeUser } = user;
     return res.status(201).json({
       success: true,
       token,
-      user: safeUser,
+      user: formatSafeUser(user),
       message: 'Account created successfully!',
     });
   } catch (err) {
@@ -87,6 +113,10 @@ router.post('/login', async (req, res) => {
 
     const user = await prisma.user.findUnique({
       where: { email: normalizedEmail },
+      include: {
+        Profile: true,
+        Verification: true,
+      },
     });
 
     if (!user) {
@@ -107,11 +137,10 @@ router.post('/login', async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    const { passwordHash: _, ...safeUser } = user;
     return res.json({
       success: true,
       token,
-      user: safeUser,
+      user: formatSafeUser(user),
       message: `Welcome back, ${user.name}!`,
     });
   } catch (err) {
@@ -128,23 +157,9 @@ router.get('/me', authenticateToken, async (req, res) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.user.id },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        avatar: true,
-        role: true,
-        verified: true,
-        phone: true,
-        bio: true,
-        location: true,
-        travelStyle: true,
-        interests: true,
-        languages: true,
-        rating: true,
-        tripsHosted: true,
-        tripsCompleted: true,
-        createdAt: true,
+      include: {
+        Profile: true,
+        Verification: true,
       },
     });
 
@@ -152,7 +167,7 @@ router.get('/me', authenticateToken, async (req, res) => {
       return res.status(404).json({ success: false, error: 'User profile not found.' });
     }
 
-    return res.json({ success: true, user });
+    return res.json({ success: true, user: formatSafeUser(user) });
   } catch (err) {
     console.error('Fetch profile error:', err);
     return res.status(500).json({ success: false, error: 'Failed to retrieve user profile.' });
@@ -168,40 +183,39 @@ router.post('/logout', (req, res) => {
 // PUT /api/auth/profile
 router.put('/profile', authenticateToken, async (req, res) => {
   try {
-    const { name, bio, location, travelStyle, interests, languages, phone, avatar } = req.body;
+    const { name, bio, location, avatar } = req.body;
 
-    const updated = await prisma.user.update({
+    if (name) {
+      await prisma.user.update({
+        where: { id: req.user.id },
+        data: { name: name.trim() },
+      });
+    }
+
+    if (bio !== undefined || location !== undefined || avatar) {
+      await prisma.profile.upsert({
+        where: { userId: req.user.id },
+        create: {
+          id: `prof_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+          userId: req.user.id,
+          bio: bio || '',
+          city: location || '',
+          avatarUrl: avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+        },
+        update: {
+          ...(bio !== undefined && { bio }),
+          ...(location !== undefined && { city: location }),
+          ...(avatar && { avatarUrl: avatar }),
+        },
+      });
+    }
+
+    const updatedUser = await prisma.user.findUnique({
       where: { id: req.user.id },
-      data: {
-        ...(name && { name: name.trim() }),
-        ...(bio !== undefined && { bio }),
-        ...(location !== undefined && { location }),
-        ...(phone !== undefined && { phone }),
-        ...(avatar && { avatar }),
-        ...(Array.isArray(travelStyle) && { travelStyle }),
-        ...(Array.isArray(interests) && { interests }),
-        ...(Array.isArray(languages) && { languages }),
-      },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        avatar: true,
-        role: true,
-        verified: true,
-        phone: true,
-        bio: true,
-        location: true,
-        travelStyle: true,
-        interests: true,
-        languages: true,
-        rating: true,
-        tripsHosted: true,
-        tripsCompleted: true,
-      },
+      include: { Profile: true, Verification: true },
     });
 
-    return res.json({ success: true, user: updated, message: 'Profile updated successfully.' });
+    return res.json({ success: true, user: formatSafeUser(updatedUser), message: 'Profile updated successfully.' });
   } catch (err) {
     console.error('Update profile error:', err);
     return res.status(500).json({ success: false, error: 'Failed to update profile.' });
