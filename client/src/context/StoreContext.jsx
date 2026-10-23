@@ -15,6 +15,45 @@ import { apiClient } from '../services/apiClient';
 
 const StoreContext = createContext(null);
 
+// Robust hash URL parser supporting deep links and query parameters
+export function parseHashUrl(hashStr) {
+  const clean = (hashStr || '').replace(/^#+[\/]?/, '');
+  if (!clean) return { page: 'home', params: {} };
+
+  const [pathPart, queryPart] = clean.split('?');
+  const parts = (pathPart || '').split('/').filter(Boolean);
+  const page = parts[0] || 'home';
+  const param = parts[1] || '';
+
+  const params = { id: param, tab: param };
+  if (queryPart) {
+    try {
+      const q = new URLSearchParams(queryPart);
+      q.forEach((val, key) => {
+        params[key] = val;
+      });
+    } catch {
+      // ignore malformed query strings
+    }
+  }
+
+  // Canonical route mapping for parameterized paths
+  if (page === 'trips' && param && !param.includes('=')) {
+    return { page: 'trip-detail', params: { id: param, ...params } };
+  }
+  if (page === 'stays' && param && !param.includes('=')) {
+    return { page: 'stay-detail', params: { id: param, ...params } };
+  }
+  if (page === 'profile' && param && !param.includes('=')) {
+    return { page: 'profile', params: { id: param, ...params } };
+  }
+  if (page === 'my-trips') {
+    return { page: 'my-trips', params: { tab: param || 'upcoming', ...params } };
+  }
+
+  return { page, params };
+}
+
 export function StoreProvider({ children }) {
   // 1. Current User State
   const [currentUser, setCurrentUser] = useState(() => {
@@ -29,12 +68,7 @@ export function StoreProvider({ children }) {
 
   // 2. Navigation State / Hash Routing
   const [currentRoute, setCurrentRoute] = useState(() => {
-    const hash = window.location.hash.replace(/^#+[\/]?/, '');
-    if (!hash) return { page: 'home', params: {} };
-    const parts = hash.split('/');
-    const page = parts[0] || 'home';
-    const id = parts[1] || '';
-    return { page, params: { id, tab: parts[1] || '' } };
+    return parseHashUrl(window.location.hash);
   });
 
   // 3. Currency State
@@ -375,7 +409,7 @@ export function StoreProvider({ children }) {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
-  // Navigation Helper with deep link pushState
+  // Navigation Helper with deep link pushState and query param preservation
   const navigate = (page, params = {}) => {
     setCurrentRoute({ page, params });
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -390,6 +424,27 @@ export function StoreProvider({ children }) {
     } else if (page === 'my-trips' && params.tab) {
       hashUrl = `#/my-trips/${params.tab}`;
     }
+
+    // Preserve search / filter query parameters in hash URL
+    if (params && typeof params === 'object') {
+      const q = new URLSearchParams();
+      Object.entries(params).forEach(([k, v]) => {
+        if (
+          !['id', 'tab'].includes(k) &&
+          v !== undefined &&
+          v !== null &&
+          v !== '' &&
+          typeof v !== 'object'
+        ) {
+          q.append(k, String(v));
+        }
+      });
+      const qStr = q.toString();
+      if (qStr) {
+        hashUrl += `?${qStr}`;
+      }
+    }
+
     window.history.pushState(null, '', hashUrl);
   };
 

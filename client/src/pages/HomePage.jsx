@@ -4,7 +4,7 @@ import TripCard from '../components/TripCard';
 import StayCard from '../components/StayCard';
 import StoryCard from '../components/StoryCard';
 import DestinationAutocomplete from '../components/DestinationAutocomplete';
-import DatePicker from '../components/DatePicker';
+import DatePicker, { toISODateString } from '../components/DatePicker';
 import {
   Search,
   Calendar,
@@ -29,15 +29,23 @@ export default function HomePage() {
     addToast,
   } = useStore();
 
-  // Search Bar State
+  // Search Bar State with safe dynamic upcoming dates
   const [destination, setDestination] = useState(selectedLocation?.city || '');
-  const [dateRange, setDateRange] = useState({ start: '15 Oct 2025', end: '22 Oct 2025' });
+  const [dateRange, setDateRange] = useState(() => {
+    const today = new Date();
+    const start = new Date(today.getTime() + 7 * 86400000);
+    const end = new Date(today.getTime() + 14 * 86400000);
+    return {
+      start: toISODateString(start),
+      end: toISODateString(end),
+    };
+  });
   const [travelersCount, setTravelersCount] = useState(2);
   const [travelerDropdownOpen, setTravelerDropdownOpen] = useState(false);
   const datePickerRef = useRef(null);
 
   const handleSearchSubmit = (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     if (!destination || !destination.trim()) {
       addToast('Please enter a destination to search.', 'error');
       return;
@@ -53,22 +61,25 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-[#F5F7F8] text-[#071A2B]">
       {/* 1. HERO SECTION */}
-      <section className="relative pt-28 pb-20 sm:pt-36 sm:pb-28 bg-[#071A2B] text-white overflow-hidden">
-        {/* Subtle background image overlay */}
+      <section className="relative pt-24 pb-16 sm:pt-32 sm:pb-24 bg-[#071A2B] text-white overflow-hidden">
+        {/* Subtle background image overlay with high contrast */}
         <div className="absolute inset-0 z-0">
           <img
-            src="https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=2000&q=85"
+            src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=2000&q=85"
             alt="Scenic Mountain Peaks"
             className="w-full h-full object-cover object-center opacity-30"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-[#071A2B]/70 via-[#071A2B]/85 to-[#071A2B]" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#071A2B]/75 via-[#071A2B]/85 to-[#071A2B]" />
         </div>
 
+        {/* Subtle ambient glow in top right */}
+        <div className="absolute top-1/4 right-10 w-96 h-96 bg-[#FF5A1F]/10 rounded-full blur-3xl pointer-events-none" />
+
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          {/* Eyebrow & Headline */}
+          {/* Eyebrow, Headline & Value Proposition */}
           <div className="max-w-3xl space-y-4 text-center sm:text-left">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-xs font-semibold tracking-wide text-slate-200">
-              <span className="w-2 h-2 rounded-full bg-[#FF5A1F]" />
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-xs font-semibold tracking-wide text-slate-200 shadow-sm">
+              <span className="w-2 h-2 rounded-full bg-[#FF5A1F] animate-pulse" />
               <span>India&apos;s Travel &amp; Buddy Community</span>
             </div>
 
@@ -79,6 +90,22 @@ export default function HomePage() {
             <p className="text-base sm:text-lg text-slate-300 font-normal max-w-2xl leading-relaxed">
               Connect with verified travel buddies, join curated group expeditions, or build your custom day-by-day itinerary with real route and budget estimates.
             </p>
+
+            {/* Trust Assurances */}
+            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 sm:gap-4 pt-1 text-xs text-slate-300 font-medium">
+              <span className="inline-flex items-center gap-1.5 bg-white/5 border border-white/10 px-3 py-1 rounded-full">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                100% Verified Hosts
+              </span>
+              <span className="inline-flex items-center gap-1.5 bg-white/5 border border-white/10 px-3 py-1 rounded-full">
+                <CheckCircle2 className="w-3.5 h-3.5 text-[#FF5A1F]" />
+                Zero Commission Fees
+              </span>
+              <span className="inline-flex items-center gap-1.5 bg-white/5 border border-white/10 px-3 py-1 rounded-full">
+                <Users className="w-3.5 h-3.5 text-sky-400" />
+                Small Friendly Groups
+              </span>
+            </div>
           </div>
 
           {/* 3 Obvious Primary Action Cards */}
@@ -95,20 +122,28 @@ export default function HomePage() {
                   navigate('trips');
                 }
               }}
-              className="bg-[#0C2438]/90 hover:bg-[#0C2438] border border-white/15 hover:border-[#FF5A1F]/50 rounded-2xl p-6 transition-all duration-200 cursor-pointer shadow-lg hover:shadow-2xl hover:-translate-y-1 flex flex-col justify-between group text-left"
+              className="bg-[#0C2438]/90 hover:bg-[#0C2438] border border-white/12 hover:border-[#FF5A1F]/60 rounded-2xl p-6 transition-all duration-300 cursor-pointer shadow-lg hover:shadow-2xl hover:-translate-y-1.5 flex flex-col justify-between group text-left relative overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF5A1F]"
             >
+              <div className="absolute top-0 right-0 w-32 h-32 bg-[#FF5A1F]/5 rounded-bl-full pointer-events-none group-hover:scale-110 transition-transform" />
               <div>
-                <div className="w-12 h-12 rounded-xl bg-[#FF5A1F]/20 text-[#FF5A1F] flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
-                  <MapPin className="w-6 h-6" />
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-12 h-12 rounded-xl bg-[#FF5A1F]/20 text-[#FF5A1F] flex items-center justify-center group-hover:scale-105 transition-transform shadow-xs">
+                    <MapPin className="w-6 h-6" />
+                  </div>
+                  <span className="text-[11px] font-bold bg-[#FF5A1F]/15 text-[#FF5A1F] border border-[#FF5A1F]/30 px-2 py-0.5 rounded-full">
+                    Upcoming Groups
+                  </span>
                 </div>
-                <h3 className="text-xl font-bold text-white mb-2">Find a Trip</h3>
+                <h3 className="text-xl font-bold text-white mb-2 group-hover:text-[#FF5A1F] transition-colors">
+                  Find a Trip
+                </h3>
                 <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
                   Discover upcoming group expeditions led by verified hosts. Join friendly travelers and explore India together.
                 </p>
               </div>
               <div className="mt-5 pt-4 border-t border-white/10 flex items-center justify-between text-xs font-bold text-[#FF5A1F]">
                 <span>Browse upcoming trips</span>
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1.5 transition-transform" />
               </div>
             </div>
 
@@ -124,25 +159,28 @@ export default function HomePage() {
                   navigate('list-trip');
                 }
               }}
-              className="bg-[#0C2438]/90 hover:bg-[#0C2438] border border-white/15 hover:border-emerald-500/50 rounded-2xl p-6 transition-all duration-200 cursor-pointer shadow-lg hover:shadow-2xl hover:-translate-y-1 flex flex-col justify-between group text-left"
+              className="bg-[#0C2438]/90 hover:bg-[#0C2438] border border-white/12 hover:border-emerald-500/60 rounded-2xl p-6 transition-all duration-300 cursor-pointer shadow-lg hover:shadow-2xl hover:-translate-y-1.5 flex flex-col justify-between group text-left relative overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
             >
+              <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-bl-full pointer-events-none group-hover:scale-110 transition-transform" />
               <div>
                 <div className="flex items-center justify-between mb-4">
-                  <div className="w-12 h-12 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center group-hover:scale-105 transition-transform">
+                  <div className="w-12 h-12 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center group-hover:scale-105 transition-transform shadow-xs">
                     <PlusCircle className="w-6 h-6" />
                   </div>
                   <span className="text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full">
                     Host &amp; Lead
                   </span>
                 </div>
-                <h3 className="text-xl font-bold text-white mb-2">List a Trip</h3>
+                <h3 className="text-xl font-bold text-white mb-2 group-hover:text-emerald-400 transition-colors">
+                  List a Trip
+                </h3>
                 <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
                   Have an adventure in mind? Host your own trip, invite travel companions, and easily share travel and stay costs.
                 </p>
               </div>
               <div className="mt-5 pt-4 border-t border-white/10 flex items-center justify-between text-xs font-bold text-emerald-400">
                 <span>Start hosting a trip</span>
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1.5 transition-transform" />
               </div>
             </div>
 
@@ -158,34 +196,37 @@ export default function HomePage() {
                   navigate('plan-trip');
                 }
               }}
-              className="bg-[#0C2438]/90 hover:bg-[#0C2438] border border-white/15 hover:border-amber-500/50 rounded-2xl p-6 transition-all duration-200 cursor-pointer shadow-lg hover:shadow-2xl hover:-translate-y-1 flex flex-col justify-between group text-left"
+              className="bg-[#0C2438]/90 hover:bg-[#0C2438] border border-white/12 hover:border-amber-500/60 rounded-2xl p-6 transition-all duration-300 cursor-pointer shadow-lg hover:shadow-2xl hover:-translate-y-1.5 flex flex-col justify-between group text-left relative overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
             >
+              <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-bl-full pointer-events-none group-hover:scale-110 transition-transform" />
               <div>
                 <div className="flex items-center justify-between mb-4">
-                  <div className="w-12 h-12 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center group-hover:scale-105 transition-transform">
+                  <div className="w-12 h-12 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center group-hover:scale-105 transition-transform shadow-xs">
                     <Sparkles className="w-6 h-6" />
                   </div>
                   <span className="text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full">
                     Smart Engine
                   </span>
                 </div>
-                <h3 className="text-xl font-bold text-white mb-2">Trip Planner</h3>
+                <h3 className="text-xl font-bold text-white mb-2 group-hover:text-amber-400 transition-colors">
+                  Trip Planner
+                </h3>
                 <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
                   Generate an optimized day-by-day smart itinerary complete with driving routes, recommended stays, and realistic budgets.
                 </p>
               </div>
               <div className="mt-5 pt-4 border-t border-white/10 flex items-center justify-between text-xs font-bold text-amber-400">
                 <span>Generate smart plan</span>
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1.5 transition-transform" />
               </div>
             </div>
           </div>
 
-          {/* Quick Search Bar */}
-          <div className="mt-8 bg-[#0C2438] rounded-2xl p-3 sm:p-4 border border-white/15 shadow-xl">
+          {/* Quick Search Bar Console */}
+          <div className="mt-8 bg-[#0C2438] rounded-2xl sm:rounded-3xl p-3 sm:p-4 border border-white/15 shadow-2xl backdrop-blur-md">
             <form onSubmit={handleSearchSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-center">
               {/* Destination */}
-              <div className="lg:col-span-5 bg-[#071A2B] px-3.5 py-2 rounded-xl border border-white/10 flex items-center gap-3">
+              <div className="lg:col-span-5 bg-[#071A2B] px-3.5 py-2.5 rounded-xl border border-white/10 hover:border-white/20 transition-colors flex items-center gap-3">
                 <MapPin className="w-5 h-5 text-[#FF5A1F] flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
@@ -201,7 +242,7 @@ export default function HomePage() {
                       setDestination(loc.city);
                       setSelectedLocation(loc);
                     }}
-                    placeholder="e.g. Manali, Spiti, Goa..."
+                    placeholder="e.g. Manali, Spiti, Goa, Jaipur..."
                     theme="dark"
                   />
                 </div>
@@ -209,7 +250,7 @@ export default function HomePage() {
 
               {/* Dates */}
               <div
-                className="lg:col-span-4 bg-[#071A2B] px-3.5 py-2 rounded-xl border border-white/10 flex items-center gap-3 cursor-pointer"
+                className="lg:col-span-4 bg-[#071A2B] px-3.5 py-2.5 rounded-xl border border-white/10 hover:border-white/20 transition-colors flex items-center gap-3 cursor-pointer"
                 onClick={() => datePickerRef.current?.open()}
               >
                 <Calendar className="w-5 h-5 text-[#FF5A1F] flex-shrink-0" />
@@ -234,7 +275,7 @@ export default function HomePage() {
               </div>
 
               {/* Travelers */}
-              <div className="lg:col-span-2 relative bg-[#071A2B] px-3.5 py-2 rounded-xl border border-white/10 flex items-center gap-3">
+              <div className="lg:col-span-2 relative bg-[#071A2B] px-3.5 py-2.5 rounded-xl border border-white/10 hover:border-white/20 transition-colors flex items-center gap-3">
                 <Users className="w-5 h-5 text-[#FF5A1F] flex-shrink-0" />
                 <div
                   className="flex-1 min-w-0 cursor-pointer"
@@ -244,14 +285,14 @@ export default function HomePage() {
                     Travelers
                   </span>
                   <span className="text-xs font-bold text-white block truncate">
-                    {travelersCount} {travelersCount === 1 ? 'Person' : 'People'}
+                    {travelersCount} {travelersCount === 1 ? 'Traveler' : 'Travelers'}
                   </span>
                 </div>
 
                 {travelerDropdownOpen && (
                   <div
                     onClick={(e) => e.stopPropagation()}
-                    className="absolute top-full left-0 right-0 mt-2 bg-[#0C2438] border border-white/15 rounded-xl p-3 shadow-2xl z-50 text-xs space-y-2"
+                    className="absolute top-full left-0 right-0 mt-2 bg-[#0C2438] border border-white/20 rounded-xl p-3 shadow-2xl z-50 text-xs space-y-2 animate-in fade-in zoom-in-95 duration-150"
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-white font-medium">Group Size</span>
@@ -259,15 +300,17 @@ export default function HomePage() {
                         <button
                           type="button"
                           onClick={() => setTravelersCount(Math.max(1, travelersCount - 1))}
-                          className="w-6 h-6 rounded-full bg-white/10 text-white font-bold flex items-center justify-center hover:bg-white/20"
+                          className="w-7 h-7 rounded-full bg-white/10 text-white font-bold flex items-center justify-center hover:bg-white/20 active:scale-95 transition-all cursor-pointer"
+                          aria-label="Decrease travelers"
                         >
                           -
                         </button>
-                        <span className="font-bold text-white w-4 text-center">{travelersCount}</span>
+                        <span className="font-bold text-white w-5 text-center text-sm">{travelersCount}</span>
                         <button
                           type="button"
-                          onClick={() => setTravelersCount(travelersCount + 1)}
-                          className="w-6 h-6 rounded-full bg-white/10 text-white font-bold flex items-center justify-center hover:bg-white/20"
+                          onClick={() => setTravelersCount(Math.min(15, travelersCount + 1))}
+                          className="w-7 h-7 rounded-full bg-white/10 text-white font-bold flex items-center justify-center hover:bg-white/20 active:scale-95 transition-all cursor-pointer"
+                          aria-label="Increase travelers"
                         >
                           +
                         </button>
@@ -276,7 +319,7 @@ export default function HomePage() {
                     <button
                       type="button"
                       onClick={() => setTravelerDropdownOpen(false)}
-                      className="w-full btn-primary-cb !py-1 text-xs font-bold"
+                      className="w-full btn-primary-cb !py-1.5 text-xs font-bold cursor-pointer"
                     >
                       Done
                     </button>
@@ -288,8 +331,9 @@ export default function HomePage() {
               <div className="lg:col-span-1">
                 <button
                   type="submit"
-                  className="w-full h-11 btn-primary-cb !py-0 !px-4 rounded-xl flex items-center justify-center gap-2 cursor-pointer shadow-md hover:scale-102 transition-transform min-h-[44px]"
+                  className="w-full h-11 btn-primary-cb !py-0 !px-4 rounded-xl flex items-center justify-center gap-2 cursor-pointer shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all min-h-[44px]"
                   title="Search Trips"
+                  aria-label="Search Trips"
                 >
                   <Search className="w-4 h-4 sm:w-5 sm:h-5" />
                   <span className="lg:hidden text-xs font-bold">Find Trips</span>
@@ -325,11 +369,19 @@ export default function HomePage() {
         </div>
 
         {/* Trips Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-          {trips.slice(0, 6).map((trip) => (
-            <TripCard key={trip.id} trip={trip} />
-          ))}
-        </div>
+        {trips.length === 0 ? (
+          <div className="text-center py-12 bg-white rounded-2xl border border-slate-200 p-8 max-w-md mx-auto space-y-3 shadow-xs">
+            <Compass className="w-10 h-10 text-[#FF5A1F] mx-auto" />
+            <p className="text-sm font-bold text-[#071A2B]">Loading upcoming trips...</p>
+            <p className="text-xs text-slate-500">Connecting to verified group departures.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+            {trips.slice(0, 6).map((trip) => (
+              <TripCard key={trip.id} trip={trip} />
+            ))}
+          </div>
+        )}
       </section>
 
       {/* 3. HOW CHALOBUDDY WORKS */}
@@ -349,7 +401,7 @@ export default function HomePage() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {/* Step 1 */}
-            <div className="bg-[#F5F7F8] rounded-2xl p-7 border border-slate-200/80 flex flex-col justify-between">
+            <div className="bg-[#F5F7F8] rounded-2xl p-7 border border-slate-200/80 flex flex-col justify-between hover:border-slate-300 transition-colors">
               <div>
                 <div className="w-12 h-12 rounded-xl bg-[#071A2B] text-[#FF5A1F] flex items-center justify-center font-bold text-lg mb-5 shadow-sm">
                   01
@@ -369,7 +421,7 @@ export default function HomePage() {
             </div>
 
             {/* Step 2 */}
-            <div className="bg-[#F5F7F8] rounded-2xl p-7 border border-slate-200/80 flex flex-col justify-between">
+            <div className="bg-[#F5F7F8] rounded-2xl p-7 border border-slate-200/80 flex flex-col justify-between hover:border-slate-300 transition-colors">
               <div>
                 <div className="w-12 h-12 rounded-xl bg-[#071A2B] text-[#FF5A1F] flex items-center justify-center font-bold text-lg mb-5 shadow-sm">
                   02
@@ -389,7 +441,7 @@ export default function HomePage() {
             </div>
 
             {/* Step 3 */}
-            <div className="bg-[#F5F7F8] rounded-2xl p-7 border border-slate-200/80 flex flex-col justify-between">
+            <div className="bg-[#F5F7F8] rounded-2xl p-7 border border-slate-200/80 flex flex-col justify-between hover:border-slate-300 transition-colors">
               <div>
                 <div className="w-12 h-12 rounded-xl bg-[#071A2B] text-[#FF5A1F] flex items-center justify-center font-bold text-lg mb-5 shadow-sm">
                   03
@@ -436,11 +488,19 @@ export default function HomePage() {
         </div>
 
         {/* Stays Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-          {stays.slice(0, 3).map((stay) => (
-            <StayCard key={stay.id} stay={stay} />
-          ))}
-        </div>
+        {stays.length === 0 ? (
+          <div className="text-center py-12 bg-white rounded-2xl border border-slate-200 p-8 max-w-md mx-auto space-y-3 shadow-xs">
+            <MapPin className="w-10 h-10 text-emerald-500 mx-auto" />
+            <p className="text-sm font-bold text-[#071A2B]">Discovering verified homestays...</p>
+            <p className="text-xs text-slate-500">Checking boutique properties and chalets.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+            {stays.slice(0, 3).map((stay) => (
+              <StayCard key={stay.id} stay={stay} />
+            ))}
+          </div>
+        )}
       </section>
 
       {/* 5. COMMUNITY STORIES */}

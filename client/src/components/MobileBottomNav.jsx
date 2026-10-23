@@ -13,7 +13,7 @@ export default function MobileBottomNav() {
 
   const navItems = [
     { id: 'home', label: 'Explore', icon: Compass },
-    { id: 'trips', label: 'Find Trips', icon: MapPin },
+    { id: 'trips', label: 'Find Trips', icon: MapPin, altIds: ['trip-detail'] },
     { id: 'list-trip', label: 'Host', icon: PlusCircle, isHighlight: true },
     { id: 'plan-trip', label: 'Planner', icon: Sparkles, altIds: ['plan-result'] },
     { id: 'my-trips', label: 'My Trips', icon: Calendar },

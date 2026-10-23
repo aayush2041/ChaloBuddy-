@@ -56,6 +56,11 @@ export default function Navbar() {
   const isHome = currentRoute.page === 'home';
   const isDarkOverlay = isHome && !isScrolled;
 
+  const isTripsActive = currentRoute.page === 'trips' || currentRoute.page === 'trip-detail';
+  const isListTripActive = currentRoute.page === 'list-trip';
+  const isPlannerActive = currentRoute.page === 'plan-trip' || currentRoute.page === 'plan-result';
+  const isStaysActive = currentRoute.page === 'stays' || currentRoute.page === 'stay-detail';
+
   const handleNavClick = (page, params = {}) => {
     navigate(page, params);
     setMobileMenuOpen(false);
@@ -63,7 +68,7 @@ export default function Navbar() {
     setNotifDropdownOpen(false);
   };
 
-  // Close dropdowns on outside click
+  // Close dropdowns on outside click or Esc key
   const notifRef = useRef(null);
   const profileRef = useRef(null);
 
@@ -76,30 +81,41 @@ export default function Navbar() {
         setProfileDropdownOpen(false);
       }
     };
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setNotifDropdownOpen(false);
+        setProfileDropdownOpen(false);
+        setMobileMenuOpen(false);
+      }
+    };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
   }, []);
 
   return (
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         isDarkOverlay
-          ? 'bg-[#071A2B]/80 backdrop-blur-md text-white py-3 border-b border-white/10'
-          : 'bg-[#071A2B]/95 backdrop-blur-xl text-white shadow-lg py-3 border-b border-white/15'
+          ? 'bg-[#071A2B]/85 backdrop-blur-md text-white py-3 border-b border-white/10'
+          : 'bg-[#071A2B]/95 backdrop-blur-xl text-white shadow-xl py-3 border-b border-white/15'
       }`}
     >
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-12">
-          {/* Left: Brand Logo & Simplified Desktop Navigation */}
-          <div className="flex items-center gap-3 sm:gap-8 lg:gap-10">
+          {/* Left: Brand Logo & Desktop Navigation */}
+          <div className="flex items-center gap-4 sm:gap-8 lg:gap-10">
             {/* Brand Logo */}
             <button
               onClick={() => handleNavClick('home')}
-              className="flex items-center gap-2 sm:gap-2.5 text-left cursor-pointer group"
+              className="flex items-center gap-2.5 sm:gap-3 text-left cursor-pointer group focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF5A1F] rounded-xl"
               aria-label="ChaloBuddy Home"
             >
-              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-[#FF5A1F] flex items-center justify-center text-white shadow-md shadow-[#FF5A1F]/30 group-hover:scale-105 transition-transform shrink-0">
-                <Compass className="w-4 h-4 sm:w-5 sm:h-5" />
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-[#FF5A1F] to-[#E04812] flex items-center justify-center text-white shadow-md shadow-[#FF5A1F]/35 group-hover:scale-105 transition-transform shrink-0">
+                <Compass className="w-4 h-4 sm:w-5 sm:h-5 transition-transform group-hover:rotate-45" />
               </div>
               <div className="flex flex-col">
                 <span className="text-lg sm:text-2xl font-black tracking-tight text-white leading-none whitespace-nowrap">
@@ -111,51 +127,57 @@ export default function Navbar() {
               </div>
             </button>
 
-            {/* Primary Desktop Navigation: 3 Core Items */}
-            <nav className="hidden md:flex items-center gap-6 lg:gap-8 text-sm font-semibold">
+            {/* Primary Desktop Navigation */}
+            <nav className="hidden md:flex items-center gap-5 lg:gap-7 text-sm font-semibold">
               <button
                 onClick={() => handleNavClick('trips')}
-                className={`transition-colors py-1 relative cursor-pointer ${
-                  currentRoute.page === 'trips'
-                    ? 'text-[#FF5A1F]'
-                    : 'text-slate-200 hover:text-white'
+                className={`transition-colors py-1 relative cursor-pointer focus:outline-none focus-visible:text-[#FF5A1F] ${
+                  isTripsActive ? 'text-[#FF5A1F]' : 'text-slate-200 hover:text-white'
                 }`}
               >
                 <span>Find a Trip</span>
-                {currentRoute.page === 'trips' && (
-                  <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-[#FF5A1F] rounded-full" />
+                {isTripsActive && (
+                  <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-[#FF5A1F] rounded-full shadow-sm shadow-[#FF5A1F]" />
                 )}
               </button>
 
               <button
                 onClick={() => handleNavClick('list-trip')}
-                className={`inline-flex items-center gap-1.5 transition-colors py-1 relative cursor-pointer ${
-                  currentRoute.page === 'list-trip'
-                    ? 'text-[#FF5A1F]'
-                    : 'text-slate-200 hover:text-white'
+                className={`inline-flex items-center gap-1.5 transition-colors py-1 relative cursor-pointer focus:outline-none focus-visible:text-[#FF5A1F] ${
+                  isListTripActive ? 'text-[#FF5A1F]' : 'text-slate-200 hover:text-white'
                 }`}
               >
                 <span>List a Trip</span>
-                <span className="text-[10px] bg-[#FF5A1F] text-white px-1.5 py-0.5 rounded-full font-bold">
+                <span className="text-[10px] bg-gradient-to-r from-[#FF5A1F] to-[#E04812] text-white px-1.5 py-0.5 rounded-full font-bold shadow-xs">
                   Host
                 </span>
-                {currentRoute.page === 'list-trip' && (
-                  <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-[#FF5A1F] rounded-full" />
+                {isListTripActive && (
+                  <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-[#FF5A1F] rounded-full shadow-sm shadow-[#FF5A1F]" />
                 )}
               </button>
 
               <button
                 onClick={() => handleNavClick('plan-trip')}
-                className={`inline-flex items-center gap-1.5 transition-colors py-1 relative cursor-pointer ${
-                  currentRoute.page === 'plan-trip' || currentRoute.page === 'plan-result'
-                    ? 'text-[#FF5A1F]'
-                    : 'text-slate-200 hover:text-white'
+                className={`inline-flex items-center gap-1.5 transition-colors py-1 relative cursor-pointer focus:outline-none focus-visible:text-[#FF5A1F] ${
+                  isPlannerActive ? 'text-[#FF5A1F]' : 'text-slate-200 hover:text-white'
                 }`}
               >
                 <Sparkles className="w-4 h-4 text-[#FF5A1F]" />
                 <span>Trip Planner</span>
-                {(currentRoute.page === 'plan-trip' || currentRoute.page === 'plan-result') && (
-                  <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-[#FF5A1F] rounded-full" />
+                {isPlannerActive && (
+                  <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-[#FF5A1F] rounded-full shadow-sm shadow-[#FF5A1F]" />
+                )}
+              </button>
+
+              <button
+                onClick={() => handleNavClick('stays')}
+                className={`transition-colors py-1 relative cursor-pointer focus:outline-none focus-visible:text-[#FF5A1F] ${
+                  isStaysActive ? 'text-[#FF5A1F]' : 'text-slate-200 hover:text-white'
+                }`}
+              >
+                <span>Find Stays</span>
+                {isStaysActive && (
+                  <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-[#FF5A1F] rounded-full shadow-sm shadow-[#FF5A1F]" />
                 )}
               </button>
             </nav>
@@ -163,11 +185,27 @@ export default function Navbar() {
 
           {/* Right: Actions & Separate Auth/Profile */}
           <div className="flex items-center gap-2 sm:gap-3">
+            {/* Currency Quick Switcher (Desktop) */}
+            <div className="hidden lg:flex items-center">
+              <button
+                onClick={() => {
+                  const next = currency === 'INR' ? 'USD' : currency === 'USD' ? 'EUR' : 'INR';
+                  setCurrency(next);
+                }}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/10 hover:bg-white/15 border border-white/15 text-xs font-bold text-slate-200 hover:text-white transition-colors cursor-pointer"
+                title="Click to toggle currency (INR / USD / EUR)"
+                aria-label={`Currency: ${currency}`}
+              >
+                <span className="text-[#FF5A1F] font-extrabold">{currency === 'INR' ? '₹' : currency === 'USD' ? '$' : '€'}</span>
+                <span>{currency}</span>
+              </button>
+            </div>
+
             {/* Search Spotlight Trigger */}
             <button
               data-testid="search-spotlight-btn"
               onClick={() => setSearchModalOpen(true)}
-              className="p-2 rounded-full hover:bg-white/10 text-slate-300 hover:text-white transition-colors cursor-pointer shrink-0"
+              className="p-2 rounded-full hover:bg-white/10 text-slate-300 hover:text-white transition-colors cursor-pointer shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF5A1F]"
               title="Search trips and destinations"
               aria-label="Search"
             >
@@ -456,8 +494,8 @@ export default function Navbar() {
               <button
                 onClick={() => handleNavClick('trips')}
                 className={`w-full text-left p-3.5 rounded-2xl border transition-all flex items-center justify-between cursor-pointer ${
-                  currentRoute.page === 'trips'
-                    ? 'bg-[#FF5A1F]/15 border-[#FF5A1F] text-white'
+                  isTripsActive
+                    ? 'bg-[#FF5A1F]/15 border-[#FF5A1F] text-white shadow-sm'
                     : 'bg-[#0C2438] border-white/10 hover:border-white/20 text-white'
                 }`}
               >
@@ -476,8 +514,8 @@ export default function Navbar() {
               <button
                 onClick={() => handleNavClick('list-trip')}
                 className={`w-full text-left p-3.5 rounded-2xl border transition-all flex items-center justify-between cursor-pointer ${
-                  currentRoute.page === 'list-trip'
-                    ? 'bg-[#FF5A1F]/15 border-[#FF5A1F] text-white'
+                  isListTripActive
+                    ? 'bg-[#FF5A1F]/15 border-[#FF5A1F] text-white shadow-sm'
                     : 'bg-[#0C2438] border-white/10 hover:border-white/20 text-white'
                 }`}
               >
@@ -499,8 +537,8 @@ export default function Navbar() {
               <button
                 onClick={() => handleNavClick('plan-trip')}
                 className={`w-full text-left p-3.5 rounded-2xl border transition-all flex items-center justify-between cursor-pointer ${
-                  currentRoute.page === 'plan-trip' || currentRoute.page === 'plan-result'
-                    ? 'bg-[#FF5A1F]/15 border-[#FF5A1F] text-white'
+                  isPlannerActive
+                    ? 'bg-[#FF5A1F]/15 border-[#FF5A1F] text-white shadow-sm'
                     : 'bg-[#0C2438] border-white/10 hover:border-white/20 text-white'
                 }`}
               >

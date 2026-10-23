@@ -1,5 +1,5 @@
 import React, { useEffect, Suspense, lazy } from 'react';
-import { useStore } from './context/StoreContext';
+import { useStore, parseHashUrl } from './context/StoreContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import MobileBottomNav from './components/MobileBottomNav';
@@ -41,47 +41,31 @@ export default function App() {
   // Listen to browser hash changes for back/forward navigation and deep links
   useEffect(() => {
     const handleHashChange = () => {
-      const hash = window.location.hash.replace(/^#+[\/]?/, '');
-      if (!hash) {
+      const { page, params } = parseHashUrl(window.location.hash);
+      const allowedPages = [
+        'home',
+        'trips',
+        'trip-detail',
+        'list-trip',
+        'plan-trip',
+        'plan-result',
+        'stays',
+        'stay-detail',
+        'buddies',
+        'profile',
+        'messages',
+        'my-trips',
+        'saved',
+        'stories',
+        'about',
+        'login',
+        'signup',
+        'admin',
+      ];
+      if (allowedPages.includes(page)) {
+        navigate(page, params);
+      } else {
         navigate('home');
-        return;
-      }
-
-      const parts = hash.split('/');
-      const page = parts[0];
-      const param = parts[1];
-
-      if (page === 'trips' && param) {
-        navigate('trip-detail', { id: param });
-      } else if (page === 'stays' && param) {
-        navigate('stay-detail', { id: param });
-      } else if (page === 'profile' && param) {
-        navigate('profile', { id: param });
-      } else if (page === 'my-trips') {
-        navigate('my-trips', { tab: param || 'upcoming' });
-      } else if (
-        [
-          'home',
-          'trips',
-          'trip-detail',
-          'list-trip',
-          'plan-trip',
-          'plan-result',
-          'stays',
-          'stay-detail',
-          'buddies',
-          'profile',
-          'messages',
-          'my-trips',
-          'saved',
-          'stories',
-          'about',
-          'login',
-          'signup',
-          'admin',
-        ].includes(page)
-      ) {
-        navigate(page, { id: param });
       }
     };
 
