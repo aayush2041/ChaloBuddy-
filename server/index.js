@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import prisma from './db.js';
 import authRoutes from './routes/auth.js';
 import tripsRoutes from './routes/trips.js';
 import requestsRoutes from './routes/requests.js';
@@ -25,12 +26,26 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Health Check
-app.get('/api/health', (req, res) => {
-  res.json({
-    status: 'healthy',
+// Health Check & Database Connectivity Probe
+app.get('/api/health', async (req, res) => {
+  let dbStatus = 'disconnected';
+  let isHealthy = true;
+
+  try {
+    // Safe, read-only connectivity probe
+    await prisma.$queryRawUnsafe('SELECT 1 as connected');
+    dbStatus = 'connected';
+  } catch {
+    dbStatus = 'unreachable';
+    isHealthy = false;
+  }
+
+  const statusCode = isHealthy ? 200 : 503;
+  return res.status(statusCode).json({
+    status: isHealthy ? 'healthy' : 'degraded',
     service: 'ChaloBuddy Core API',
     version: '1.0.0',
+    database: dbStatus,
     time: new Date().toISOString(),
   });
 });
@@ -53,8 +68,14 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Start Server if run directly
-if (process.env.NODE_ENV !== 'test') {
+// Start standalone server only when run directly from the CLI (not imported as a serverless handler)
+const isDirectRun =
+  !process.env.VERCEL &&
+  process.env.NODE_ENV !== 'test' &&
+  process.argv[1] &&
+  (process.argv[1].endsWith('server/index.js') || process.argv[1].endsWith('server\\index.js'));
+
+if (isDirectRun) {
   app.listen(PORT, () => {
     console.log(`🚀 ChaloBuddy API server running on port ${PORT}`);
     console.log(`👉 Health check: http://localhost:${PORT}/api/health`);

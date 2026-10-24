@@ -1,7 +1,19 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'chalobuddy_super_secure_production_secret_key_2026_xyz';
+function getJwtSecret() {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(
+        'FATAL: JWT_SECRET environment variable is required in production mode. Please configure JWT_SECRET.'
+      );
+    }
+    return 'chalobuddy_development_jwt_secret_dev_only';
+  }
+  return secret;
+}
+
 const TOKEN_EXPIRY = '7d';
 
 export async function hashPassword(plainPassword) {
@@ -20,12 +32,12 @@ export function generateToken(user) {
     name: user.name,
     role: user.role,
   };
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: TOKEN_EXPIRY });
+  return jwt.sign(payload, getJwtSecret(), { expiresIn: TOKEN_EXPIRY });
 }
 
 export function verifyToken(token) {
   try {
-    return jwt.verify(token, JWT_SECRET);
+    return jwt.verify(token, getJwtSecret());
   } catch {
     return null;
   }

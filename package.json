@@ -9,7 +9,7 @@
     "server": "node server/index.js",
     "client": "npm --prefix client run dev",
     "dev": "npm --prefix client run dev",
-    "build": "npm --prefix client run build",
+    "build": "prisma generate && npm --prefix client run build",
     "preview": "npm --prefix client run preview",
     "prisma:generate": "prisma generate",
     "prisma:seed": "node prisma/seed.js"
