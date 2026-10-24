@@ -9,6 +9,7 @@ import conversationsRoutes from './routes/conversations.js';
 import staysRoutes from './routes/stays.js';
 import storiesRoutes from './routes/stories.js';
 import notificationsRoutes from './routes/notifications.js';
+import plannerRoutes from './routes/planner.js';
 
 dotenv.config();
 
@@ -58,6 +59,7 @@ app.use('/api/conversations', conversationsRoutes);
 app.use('/api/stays', staysRoutes);
 app.use('/api/stories', storiesRoutes);
 app.use('/api/notifications', notificationsRoutes);
+app.use('/api/planner', plannerRoutes);
 
 // Global Error Handler
 app.use((err, req, res, next) => {

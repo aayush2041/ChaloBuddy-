@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useStore } from '../context/StoreContext';
+import { apiClient } from '../services/apiClient';
 import {
   MessageSquare,
   Send,
@@ -8,6 +9,9 @@ import {
   ArrowLeft,
   Users,
   Search,
+  ShieldAlert,
+  Sparkles,
+  Lock,
 } from 'lucide-react';
 
 export default function MessagesPage() {
@@ -22,6 +26,7 @@ export default function MessagesPage() {
 
   const [messageInput, setMessageInput] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [securityNotice, setSecurityNotice] = useState(null);
   // Responsive view state for mobile screens (< 768px): 'list' or 'chat'
   const [mobileView, setMobileView] = useState('list');
   const messagesEndRef = useRef(null);
@@ -45,10 +50,29 @@ export default function MessagesPage() {
     setMobileView('chat');
   };
 
-  const handleSend = (e) => {
+  const handleSend = async (e) => {
     e.preventDefault();
-    if (!messageInput.trim() || !activeConv) return;
-    sendMessage(activeConv.id, messageInput);
+    const textToSend = messageInput.trim();
+    if (!textToSend || !activeConv) return;
+
+    setSecurityNotice(null);
+
+    // Call API client
+    try {
+      const res = await apiClient.conversations.sendMessage(activeConv.id, textToSend);
+      if (res && res.blocked) {
+        setSecurityNotice(res.error || 'Contact information sharing is prohibited to protect traveler safety.');
+        return;
+      }
+      if (res && res.error && res.status === 403) {
+        setSecurityNotice(res.error);
+        return;
+      }
+    } catch (err) {
+      console.warn('API message send warning:', err.message);
+    }
+
+    sendMessage(activeConv.id, textToSend);
     setMessageInput('');
   };
 
@@ -194,8 +218,14 @@ export default function MessagesPage() {
 
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
-                        <h3 className="font-extrabold text-xs sm:text-sm text-[#071A2B] truncate">
-                          {activeConv.name}
+                        <h3 className="font-extrabold text-xs sm:text-sm text-[#071A2B] truncate flex items-center gap-1.5">
+                          <span>{activeConv.name}</span>
+                          {(activeConv.isWomenOnly || activeConv.name.includes('Women')) && (
+                            <span className="text-[10px] bg-pink-100 text-pink-700 font-bold px-2 py-0.5 rounded-full border border-pink-200 flex items-center gap-1 shrink-0">
+                              <Sparkles className="w-3 h-3 text-pink-500" />
+                              <span>Women-Only</span>
+                            </span>
+                          )}
                         </h3>
                         {activeConv.type === 'group' && (
                           <span className="text-[9px] sm:text-[10px] bg-slate-100 text-slate-600 px-1.5 sm:px-2 py-0.5 rounded-full font-bold flex-shrink-0 hidden xs:inline-block">
@@ -271,6 +301,26 @@ export default function MessagesPage() {
                   })}
                   <div ref={messagesEndRef} />
                 </div>
+
+                {/* Contact Information Security Alert Banner */}
+                {securityNotice && (
+                  <div className="p-3 bg-amber-50 border-t border-amber-200 flex items-start justify-between gap-3 text-xs text-amber-900 animate-in fade-in">
+                    <div className="flex items-start gap-2">
+                      <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                      <div>
+                        <strong className="block font-bold text-amber-950">Safety Protection Notice:</strong>
+                        <p className="text-[11px] text-amber-800 leading-snug">{securityNotice}</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSecurityNotice(null)}
+                      className="text-amber-700 hover:text-amber-950 font-bold text-xs cursor-pointer"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                )}
 
                 {/* Input Composer Bar */}
                 <form onSubmit={handleSend} className="p-2.5 sm:p-3 border-t border-slate-200 bg-white flex items-center gap-2 flex-shrink-0">

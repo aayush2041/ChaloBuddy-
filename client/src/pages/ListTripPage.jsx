@@ -67,6 +67,7 @@ export default function ListTripPage() {
     price: prefill.budget ? String(prefill.budget) : '3500',
     title: prefill.name || '',
     description: prefill.description || '',
+    isWomenOnly: false,
   });
 
   // Validation Errors & Submission State
@@ -187,6 +188,7 @@ export default function ListTripPage() {
         meetingPoint: `${formData.startingLocation} (${formData.departureTime})`,
         transport: 'Private Group Vehicle',
         stayDetails: 'Verified local accommodations & homestays',
+        isWomenOnly: Boolean(formData.isWomenOnly),
         images: DEFAULT_TRIP_IMAGES,
         vibes: ['Mountains', 'Adventure', 'Road Trips'],
       });

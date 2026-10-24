@@ -39,3 +39,6 @@ server/uploads/
 scratch/
 scraped_shopify.html
 test-workflow.js
+
+# Local Backups
+backups/

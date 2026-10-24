@@ -396,6 +396,23 @@ export function StoreProvider({ children }) {
     localStorage.setItem('cb_currency', currency);
   }, [currency]);
 
+  // Sync live trips from PostgreSQL API on initialization
+  useEffect(() => {
+    let isMounted = true;
+    apiClient.trips.list().then((res) => {
+      if (isMounted && res.success && Array.isArray(res.trips) && res.trips.length > 0) {
+        setTrips((prev) => {
+          const apiIds = new Set(res.trips.map((t) => t.id));
+          const remainingPrev = prev.filter((t) => !apiIds.has(t.id));
+          return [...res.trips, ...remainingPrev];
+        });
+      }
+    }).catch((err) => {
+      console.warn('Trips sync fallback:', err.message);
+    });
+    return () => { isMounted = false; };
+  }, []);
+
   // Toast Helpers
   const addToast = (message, type = 'success', duration = 3500) => {
     const id = Date.now() + Math.random().toString();
@@ -492,7 +509,50 @@ export function StoreProvider({ children }) {
     return matched;
   };
 
-  const logoutUser = async () => {
+    const updateUserProfile = async (profileData) => {
+    try {
+      const res = await apiClient.auth.updateProfile(profileData);
+      if (res && res.success && res.user) {
+        const mergedUser = {
+          ...currentUser,
+          ...res.user,
+          gender: res.user.gender || profileData.gender || currentUser?.gender,
+          location: profileData.location || res.profile?.city || currentUser?.location,
+          bio: profileData.bio || res.profile?.bio || currentUser?.bio,
+          languages: profileData.languages || res.profile?.languages || currentUser?.languages,
+          interests: profileData.interests || res.profile?.interests || currentUser?.interests,
+          travelStyle: profileData.travelStyle || res.profile?.travelStyle || currentUser?.travelStyle,
+          budgetMin: profileData.budgetMin !== undefined ? profileData.budgetMin : currentUser?.budgetMin,
+          budgetMax: profileData.budgetMax !== undefined ? profileData.budgetMax : currentUser?.budgetMax,
+        };
+        setCurrentUser(mergedUser);
+        localStorage.setItem('cb_current_user', JSON.stringify(mergedUser));
+        addToast('Profile and preferences updated successfully!', 'success');
+        return { success: true, user: mergedUser };
+      }
+    } catch (err) {
+      console.warn('API profile update fallback:', err.message);
+    }
+
+    const updated = {
+      ...currentUser,
+      ...profileData,
+      gender: profileData.gender || currentUser?.gender,
+      location: profileData.location || currentUser?.location,
+      bio: profileData.bio || currentUser?.bio,
+      languages: profileData.languages || currentUser?.languages,
+      interests: profileData.interests || currentUser?.interests,
+      travelStyle: profileData.travelStyle || currentUser?.travelStyle,
+      budgetMin: profileData.budgetMin !== undefined ? profileData.budgetMin : currentUser?.budgetMin,
+      budgetMax: profileData.budgetMax !== undefined ? profileData.budgetMax : currentUser?.budgetMax,
+    };
+    setCurrentUser(updated);
+    localStorage.setItem('cb_current_user', JSON.stringify(updated));
+    addToast('Profile preferences updated!', 'success');
+    return { success: true, user: updated };
+  };
+
+const logoutUser = async () => {
     try {
       await apiClient.auth.logout();
     } catch {
@@ -581,11 +641,16 @@ export function StoreProvider({ children }) {
         specialRequests: requestData.specialRequirements,
       });
 
-      if (res.success) {
-        addToast(`Join request submitted to ${targetTrip.organizer.name}! Pending approval.`, 'success');
+      if (res && !res.success) {
+        addToast(res.error || 'Failed to submit join request', 'error');
+        return { success: false, error: res.error };
       }
-    } catch {
-      // offline fallback
+
+      if (res && res.success) {
+        addToast(`Join request submitted to ${targetTrip.organizer?.name || 'the organizer'}! Pending approval.`, 'success');
+      }
+    } catch (err) {
+      console.warn('Join request API warning:', err.message);
     }
 
     const newBooking = {
@@ -908,6 +973,18 @@ export function StoreProvider({ children }) {
   };
 
   // Smart Plan Operations (Section 7)
+    const deleteSavedPlan = async (bookingId, dbId) => {
+    setMyTrips((prev) => prev.filter((t) => t.bookingId !== bookingId));
+    if (dbId) {
+      try {
+        await apiClient.planner.deleteSavedPlan(dbId);
+      } catch (err) {
+        console.warn('API delete saved plan fallback:', err.message);
+      }
+    }
+    addToast('Saved plan removed from your workspace', 'info');
+  };
+
   const saveGeneratedPlan = (plan) => {
     if (!plan) return null;
 
@@ -946,6 +1023,24 @@ export function StoreProvider({ children }) {
       'Personal emergency medicines & basic kit',
       'High-capacity power bank & charging cables',
     ];
+
+    // Persist to PostgreSQL database for authenticated user
+    if (currentUser?.id) {
+      apiClient.planner.savePlan({
+        title: tripTitle,
+        origin: originName,
+        destination: plan.destinationFullName || plan.destination || destName,
+        startDate: start ? new Date(start) : null,
+        endDate: end ? new Date(end) : null,
+        travelers: travelersCount,
+        budgetBasis: 'TOTAL',
+        totalBudget: totalEst,
+        routeDetails: plan.transitOption || plan.routeData || null,
+        accommodationDetails: plan.stayOption || null,
+        itineraryDays: plan.dayPlans || plan.days || null,
+        costBreakdown: plan.budgetBreakdown || null,
+      }).catch((e) => console.warn('Database save plan sync warning:', e.message));
+    }
 
     const newSavedPlan = {
       bookingId,
@@ -1074,6 +1169,7 @@ export function StoreProvider({ children }) {
         switchUser,
         loginUser,
         logoutUser,
+        updateUserProfile,
         allUsers: INITIAL_USERS,
 
         // Route & Navigation
@@ -1124,6 +1220,7 @@ export function StoreProvider({ children }) {
         addStory,
         generatePlan,
         saveGeneratedPlan,
+        deleteSavedPlan,
         removePlanActivity,
         addPlanActivity,
         togglePackingItem,

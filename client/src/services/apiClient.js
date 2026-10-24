@@ -221,4 +221,41 @@ export const apiClient = {
       });
     },
   },
+
+  // Intelligent Trip Planner & Multimodal Engine
+  planner: {
+    getRoutes: async (payload) => {
+      return request('/planner/routes', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+    },
+    generateItinerary: async (payload) => {
+      return request('/planner/generate', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+    },
+    savePlan: async (planData) => {
+      return request('/planner/saved-plans', {
+        method: 'POST',
+        body: JSON.stringify(planData),
+      });
+    },
+    getSavedPlans: async () => {
+      return request('/planner/saved-plans');
+    },
+    deleteSavedPlan: async (id) => {
+      return request(`/planner/saved-plans/${id}`, {
+        method: 'DELETE',
+      });
+    },
+  },
+
+  // Compatibility Engine
+  compatibility: {
+    getForTrip: async (tripId) => {
+      return request(`/trips/${tripId}/compatibility`);
+    },
+  },
 };

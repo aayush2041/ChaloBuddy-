@@ -13,6 +13,11 @@ model User {
   name                                    String
   createdAt                               DateTime             @default(now())
   updatedAt                               DateTime             @updatedAt
+  gender                                  String?              @default("PREFER_NOT_TO_SAY")
+  role                                    String               @default("TRAVELER")
+  isVerified                              Boolean              @default(false)
+  ConversationParticipant                 ConversationParticipant[]
+  savedPlans                              SavedPlan[]
   BlockedUser_BlockedUser_blockedIdToUser BlockedUser[]        @relation("BlockedUser_blockedIdToUser")
   BlockedUser_BlockedUser_blockerIdToUser BlockedUser[]        @relation("BlockedUser_blockerIdToUser")
   Expense                                 Expense[]
@@ -60,6 +65,13 @@ model Trip {
   intensity          Intensity
   status             TripStatus           @default(PUBLISHED)
   scope              String               @default("NATIONAL")
+  isWomenOnly        Boolean              @default(false)
+  visibility         String               @default("PUBLIC")
+  currency           String               @default("INR")
+  coverImage         String?
+  stops              String?
+  guidelines         String?
+  savedPlans         SavedPlan[]
   createdAt          DateTime             @default(now())
   updatedAt          DateTime             @updatedAt
   CompatibilityMatch CompatibilityMatch[]
@@ -83,15 +95,18 @@ model Trip {
   @@index([endDate])
   @@index([scope])
   @@index([startingCity])
+  @@index([isWomenOnly])
 }
 
 model Conversation {
   id        String    @id @default(cuid())
   tripId    String?
   title     String?
-  createdAt DateTime  @default(now())
-  Trip      Trip?     @relation(fields: [tripId], references: [id], onDelete: Cascade)
-  messages  Message[]
+  type         String                    @default("DIRECT")
+  createdAt    DateTime                  @default(now())
+  Trip         Trip?                     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  messages     Message[]
+  participants ConversationParticipant[]
 
   @@index([tripId])
 }
@@ -101,8 +116,10 @@ model Message {
   conversationId String
   senderId       String
   body           String
-  createdAt      DateTime     @default(now())
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  moderationStatus String       @default("APPROVED")
+  blockedReason    String?
+  createdAt        DateTime     @default(now())
+  conversation     Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   sender         User         @relation("SentMessages", fields: [senderId], references: [id])
 
   @@index([conversationId, createdAt])
@@ -295,6 +312,11 @@ model Profile {
   citiesVisited    Int          @default(0)
   countriesVisited Int          @default(0)
   companionRating  Float        @default(5)
+  gender           String?      @default("PREFER_NOT_TO_SAY")
+  languages        String?      @default("English, Hindi")
+  budgetMin        Int?
+  budgetMax        Int?
+  interests        String?
   User             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
@@ -464,4 +486,43 @@ enum TravelStyle {
   LUXURY
   NATURE
   CULTURAL
+}
+
+model ConversationParticipant {
+  id             String       @id @default(cuid())
+  conversationId String
+  userId         String
+  role           String       @default("MEMBER")
+  joinedAt       DateTime     @default(now())
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([userId])
+}
+
+model SavedPlan {
+  id                   String    @id @default(cuid())
+  userId               String
+  title                String
+  origin               String
+  destination          String
+  startDate            DateTime?
+  endDate              DateTime?
+  travelers            Int       @default(1)
+  budgetBasis          String    @default("TOTAL")
+  totalBudget          Int       @default(0)
+  currency             String    @default("INR")
+  routeDetails         Json?
+  accommodationDetails Json?
+  itineraryDays        Json?
+  costBreakdown        Json?
+  notes                String?
+  linkedTripId         String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  linkedTrip           Trip?     @relation(fields: [linkedTripId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
 }

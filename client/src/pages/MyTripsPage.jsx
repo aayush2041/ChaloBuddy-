@@ -18,6 +18,7 @@ import {
   CheckSquare,
   Square,
   Sparkles,
+  Trash2,
 } from 'lucide-react';
 
 export default function MyTripsPage() {
@@ -29,6 +30,7 @@ export default function MyTripsPage() {
     addWorkspaceExpense,
     openTripRoom,
     setSmartPlan,
+    deleteSavedPlan,
     navigate,
     currentRoute,
   } = useStore();
@@ -197,17 +199,29 @@ export default function MyTripsPage() {
               </div>
 
               <div className="flex items-center gap-2">
-                {selectedTrip.isSavedPlan && selectedTrip.smartPlanData ? (
-                  <button
-                    onClick={() => {
-                      setSmartPlan(selectedTrip.smartPlanData);
-                      navigate('plan-result');
-                    }}
-                    className="btn-primary-cb !py-2 !px-4 !text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-md shadow-[#FF5A1F]/30"
-                  >
-                    <Sparkles className="w-4 h-4" />
-                    <span>View Full Smart Plan</span>
-                  </button>
+                {selectedTrip.isSavedPlan ? (
+                  <div className="flex items-center gap-2">
+                    {selectedTrip.smartPlanData && (
+                      <button
+                        onClick={() => {
+                          setSmartPlan(selectedTrip.smartPlanData);
+                          navigate('plan-result');
+                        }}
+                        className="btn-primary-cb !py-2 !px-4 !text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-md shadow-[#FF5A1F]/30"
+                      >
+                        <Sparkles className="w-4 h-4" />
+                        <span>View Full Smart Plan</span>
+                      </button>
+                    )}
+                    <button
+                      onClick={() => deleteSavedPlan(selectedTrip.bookingId, selectedTrip.dbId)}
+                      className="p-2 rounded-xl bg-white/10 hover:bg-rose-500/25 text-rose-300 border border-white/15 hover:border-rose-400/30 transition-all cursor-pointer flex items-center gap-1 text-xs"
+                      title="Remove Saved Plan"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      <span className="hidden sm:inline">Delete</span>
+                    </button>
+                  </div>
                 ) : (
                   <button
                     onClick={handleOpenGroupChat}

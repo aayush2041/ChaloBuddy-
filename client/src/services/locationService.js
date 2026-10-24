@@ -139,6 +139,32 @@ export function resolveLocation(input) {
     lucknow: { city: 'Lucknow', state: 'Uttar Pradesh', lat: 26.8467, lng: 80.9462 },
   };
 
+  const internationalCities = {
+    dubai: { city: 'Dubai', country: 'United Arab Emirates', lat: 25.2048, lng: 55.2708 },
+    bangkok: { city: 'Bangkok', country: 'Thailand', lat: 13.7563, lng: 100.5018 },
+    singapore: { city: 'Singapore', country: 'Singapore', lat: 1.3521, lng: 103.8198 },
+    bali: { city: 'Bali', country: 'Indonesia', lat: -8.3405, lng: 115.092 },
+    kathmandu: { city: 'Kathmandu', country: 'Nepal', lat: 27.7172, lng: 85.324 },
+    colombo: { city: 'Colombo', country: 'Sri Lanka', lat: 6.9271, lng: 79.8612 },
+    london: { city: 'London', country: 'United Kingdom', lat: 51.5074, lng: -0.1278 },
+    paris: { city: 'Paris', country: 'France', lat: 48.8566, lng: 2.3522 },
+    tokyo: { city: 'Tokyo', country: 'Japan', lat: 35.6762, lng: 139.6503 },
+  };
+
+  const intlCity = internationalCities[queryLower];
+  if (intlCity) {
+    return {
+      id: queryLower,
+      city: intlCity.city,
+      state: '',
+      country: intlCity.country,
+      fullName: `${intlCity.city}, ${intlCity.country}`,
+      type: 'International Travel Hub',
+      lat: intlCity.lat,
+      lng: intlCity.lng,
+    };
+  }
+
   const fallbackCity = commonCities[queryLower];
   if (fallbackCity) {
     return {

@@ -384,6 +384,72 @@ export default function HomePage() {
         )}
       </section>
 
+      {/* 2B. DEDICATED WOMEN-ONLY TRIPS SECTION */}
+      <section className="py-16 sm:py-20 bg-gradient-to-b from-[#160b18] via-[#0e0712] to-[#071A2B] text-white border-y border-pink-500/20 relative overflow-hidden">
+        <div className="absolute top-1/2 left-10 w-96 h-96 bg-pink-600/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-10 right-10 w-96 h-96 bg-rose-600/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-10 gap-4">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-pink-500/15 border border-pink-400/30 text-pink-300 text-xs font-bold mb-3 shadow-sm">
+                <Sparkles className="w-3.5 h-3.5 text-pink-400 animate-pulse" />
+                <span>Dedicated Safe Space</span>
+              </div>
+              <h2 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight flex items-center gap-2">
+                <span>Women-Only Expeditions</span>
+                <span className="text-xl">🌸</span>
+              </h2>
+              <p className="text-xs sm:text-sm text-pink-100/70 mt-1 max-w-2xl leading-relaxed">
+                Curated, verified adventures exclusively open to female travelers. Explore high mountain passes, coastal trails, and cultural retreats with female expedition leaders and vetted accommodations.
+              </p>
+            </div>
+
+            <button
+              onClick={() => navigate('trips', { womenOnly: 'true' })}
+              className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold bg-pink-600 hover:bg-pink-500 text-white px-5 py-2.5 rounded-full transition-all cursor-pointer shadow-lg shadow-pink-600/30 self-start sm:self-auto"
+            >
+              <span>Explore All Women-Only Trips</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+            {trips.filter((t) => t.isWomenOnly).length > 0
+              ? trips.filter((t) => t.isWomenOnly).slice(0, 3).map((trip) => (
+                  <TripCard key={trip.id} trip={trip} />
+                ))
+              : trips.slice(0, 2).map((trip) => (
+                  <TripCard key={trip.id} trip={{ ...trip, isWomenOnly: true }} />
+                ))}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-12 pt-8 border-t border-pink-500/20 text-xs text-pink-100/80">
+            <div className="flex items-start gap-3 bg-white/5 p-4 rounded-xl border border-pink-500/20">
+              <ShieldCheck className="w-5 h-5 text-pink-400 shrink-0 mt-0.5" />
+              <div>
+                <h4 className="font-bold text-white mb-0.5">Verified Female Travelers</h4>
+                <p className="text-[11px] text-pink-200/70">Backend query and room membership restrictions strictly protect group privacy.</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 bg-white/5 p-4 rounded-xl border border-pink-500/20">
+              <Users className="w-5 h-5 text-pink-400 shrink-0 mt-0.5" />
+              <div>
+                <h4 className="font-bold text-white mb-0.5">Certified Female Leads</h4>
+                <p className="text-[11px] text-pink-200/70">Expeditions guided by certified female trek leaders with wilderness first-aid training.</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 bg-white/5 p-4 rounded-xl border border-pink-500/20">
+              <CheckCircle2 className="w-5 h-5 text-pink-400 shrink-0 mt-0.5" />
+              <div>
+                <h4 className="font-bold text-white mb-0.5">Vetted Safe Stays</h4>
+                <p className="text-[11px] text-pink-200/70">Handpicked homestays, twin-share private chalets, and secure verified transit.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* 3. HOW CHALOBUDDY WORKS */}
       <section className="py-16 sm:py-20 bg-white border-y border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

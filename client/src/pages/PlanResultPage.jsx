@@ -30,6 +30,8 @@ import {
   X,
   Info,
   Check,
+  Printer,
+  ExternalLink,
   Sunrise,
   Sun,
   Sunset,
@@ -145,6 +147,15 @@ export default function PlanResultPage() {
             >
               <Share2 className="w-3.5 h-3.5" />
               <span>Share</span>
+            </button>
+
+            <button
+              onClick={() => window.print()}
+              className="btn-secondary-cb !bg-white/10 !text-white !border-white/20 hover:!bg-white/20 !py-2.5 sm:!py-2 !px-3.5 !text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer"
+              title="Print or Export PDF"
+            >
+              <Printer className="w-3.5 h-3.5 text-sky-400" />
+              <span>Print / Export</span>
             </button>
 
             <button
@@ -747,12 +758,35 @@ export default function PlanResultPage() {
                       </span>
                     </div>
                     <p className="text-[11px] text-slate-500">{opt.description}</p>
+                    <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[10px]">
+                      <span className="bg-sky-50 text-sky-700 font-bold px-2 py-0.5 rounded border border-sky-200">
+                        {opt.priceClassification || 'INDICATIVE_ESTIMATE'}
+                      </span>
+                      {opt.dataSource && (
+                        <span className="bg-slate-100 text-slate-600 font-medium px-2 py-0.5 rounded truncate max-w-[200px]">
+                          Src: {opt.dataSource}
+                        </span>
+                      )}
+                    </div>
                     <div className="flex justify-between items-center pt-2 border-t border-slate-200/60 font-black">
                       <span className="text-slate-500 text-[11px]">Round-trip cost:</span>
                       <span className="text-[#071A2B]">
                         ₹{opt.costPerPerson.toLocaleString('en-IN')} / person
                       </span>
                     </div>
+                    {opt.bookingUrl && (
+                      <div className="pt-1.5">
+                        <a
+                          href={opt.bookingUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-[11px] font-bold text-[#FF5A1F] hover:underline"
+                        >
+                          <span>Verify / Book on {opt.provider || 'Provider'}</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

@@ -74,6 +74,9 @@ export default function TripsPage() {
   const [sortBy, setSortBy] = useState(
     currentRoute?.params?.sortBy || 'recommended'
   );
+  const [womenOnly, setWomenOnly] = useState(
+    currentRoute?.params?.womenOnly === 'true' || currentRoute?.params?.womenOnly === true
+  );
 
   // Search Execution & State
   const [isSearching, setIsSearching] = useState(false);
@@ -113,6 +116,8 @@ export default function TripsPage() {
     const targetCategory = params.category || 'all';
     const targetMaxPrice = params.maxPrice ? Number(params.maxPrice) : null;
     const targetSortBy = params.sortBy || 'recommended';
+    const targetWomenOnly = params.womenOnly === 'true' || params.womenOnly === true;
+    setWomenOnly((prev) => (prev !== targetWomenOnly ? targetWomenOnly : prev));
 
     setFromLocation((prev) => (prev !== targetFrom ? targetFrom : prev));
     setDestination((prev) => (prev !== targetDest ? targetDest : prev));
@@ -144,6 +149,7 @@ export default function TripsPage() {
         category: selectedCategory,
         maxPrice,
         sortBy,
+        womenOnly,
         ...overrides,
       };
 
@@ -155,6 +161,7 @@ export default function TripsPage() {
       if (merged.category && merged.category !== 'all') cleanParams.category = merged.category;
       if (merged.maxPrice && Number(merged.maxPrice) > 0) cleanParams.maxPrice = merged.maxPrice;
       if (merged.sortBy && merged.sortBy !== 'recommended') cleanParams.sortBy = merged.sortBy;
+      if (merged.womenOnly) cleanParams.womenOnly = 'true';
 
       navigate('trips', cleanParams);
     },
@@ -175,6 +182,7 @@ export default function TripsPage() {
         category: selectedCategory,
         maxPrice,
         sortBy,
+        womenOnly,
         ...(overrideCriteria || {}),
       };
 
@@ -418,6 +426,22 @@ export default function TripsPage() {
           {/* Category Filter Pills (Horizontal Scrollable on Mobile) */}
           <div className="pt-2">
             <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none no-scrollbar">
+              <button
+                type="button"
+                onClick={() => {
+                  const next = !womenOnly;
+                  setWomenOnly(next);
+                  syncRouteWithFilters({ womenOnly: next });
+                  runSearch({ womenOnly: next });
+                }}
+                className={`shrink-0 px-4 py-2 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 min-h-[38px] ${
+                  womenOnly
+                    ? 'bg-gradient-to-r from-pink-600 to-rose-600 text-white shadow-md shadow-pink-600/40 ring-2 ring-pink-300'
+                    : 'bg-pink-950/40 hover:bg-pink-900/50 text-pink-300 border border-pink-500/30'
+                }`}
+              >
+                <span>🌸 Women-Only</span>
+              </button>
               {CATEGORIES.map((cat) => {
                 const isActive = selectedCategory === cat.id;
                 return (

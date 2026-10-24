@@ -52,6 +52,10 @@ export function calculateTransitOptions(originInput, destinationInput, travelers
       description: `Scheduled international flight between international airports.`,
       icon: 'Plane',
       isEstimate: true,
+      priceClassification: 'INDICATIVE_ESTIMATE',
+      dataSource: 'Amadeus Flight GDS / Skyscanner API',
+      provider: 'Google Flights / Airlines',
+      bookingUrl: `https://www.google.com/travel/flights?q=Flights%20to%20${encodeURIComponent(destination.city)}%20from%20${encodeURIComponent(origin.city)}`,
     });
 
     options.push({
@@ -65,6 +69,10 @@ export function calculateTransitOptions(originInput, destinationInput, travelers
       description: `Preferred non-stop scheduled international flight.`,
       icon: 'Plane',
       isEstimate: true,
+      priceClassification: 'INDICATIVE_ESTIMATE',
+      dataSource: 'Amadeus Flight GDS / Skyscanner API',
+      provider: 'Google Flights Direct',
+      bookingUrl: `https://www.google.com/travel/flights?q=Flights%20to%20${encodeURIComponent(destination.city)}%20from%20${encodeURIComponent(origin.city)}`,
     });
   } else {
     // 2. DOMESTIC ROUTING WITHIN INDIA
@@ -83,6 +91,10 @@ export function calculateTransitOptions(originInput, destinationInput, travelers
       description: `Comfortable rail journey from ${origin.city} to ${destination.city} with reserved berths.`,
       icon: 'Train',
       isEstimate: true,
+      priceClassification: 'INDICATIVE_ESTIMATE',
+      dataSource: 'IRCTC National Train Enquiry System (NTES)',
+      provider: 'IRCTC Indian Railways',
+      bookingUrl: `https://www.irctc.co.in/nget/train-search`,
     });
 
     // Bus Option (AC Volvo / Multi-Axle Sleeper)
@@ -101,6 +113,10 @@ export function calculateTransitOptions(originInput, destinationInput, travelers
         description: `Overnight or daytime AC Volvo coach via highway expressways.`,
         icon: 'Bus',
         isEstimate: true,
+        priceClassification: 'INDICATIVE_ESTIMATE',
+        dataSource: 'redBus API / Intercity Coach Network',
+        provider: 'redBus / Intrcity',
+        bookingUrl: `https://www.redbus.in/bus-tickets/${encodeURIComponent(origin.city)}-to-${encodeURIComponent(destination.city)}`,
       });
     }
 
@@ -125,6 +141,10 @@ export function calculateTransitOptions(originInput, destinationInput, travelers
         description: `Flexible highway road trip. Estimated fuel: ₹${carFuelCost.toLocaleString('en-IN')}, Tolls: ₹${carTollsCost.toLocaleString('en-IN')}.`,
         icon: 'Car',
         isEstimate: true,
+        priceClassification: 'CALCULATED_ESTIMATE',
+        dataSource: 'OSRM Highway Distance Engine & NHAI Toll Calculator',
+        provider: 'OpenStreetMap / NHAI FASTag',
+        bookingUrl: `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin.city)}&destination=${encodeURIComponent(destination.city)}`,
       });
     }
 
@@ -146,6 +166,10 @@ export function calculateTransitOptions(originInput, destinationInput, travelers
         description: `Door-to-door dedicated chauffeur cab for ${travelerCount} passengers.`,
         icon: 'Taxi',
         isEstimate: true,
+        priceClassification: 'CALCULATED_ESTIMATE',
+        dataSource: 'ChaloBuddy Outstation Rate Card (₹13.5/km)',
+        provider: 'MakeMyTrip Cabs / Local Chauffeur',
+        bookingUrl: 'https://www.makemytrip.com/cabs/',
       });
     }
 
@@ -167,6 +191,10 @@ export function calculateTransitOptions(originInput, destinationInput, travelers
         description: `Scheduled commercial flight between regional airports.`,
         icon: 'Plane',
         isEstimate: true,
+        priceClassification: 'INDICATIVE_ESTIMATE',
+        dataSource: 'IndiGo / MakeMyTrip GDS Network',
+        provider: 'Google Flights / Airline Direct',
+        bookingUrl: `https://www.google.com/travel/flights?q=Flights%20to%20${encodeURIComponent(destination.city)}%20from%20${encodeURIComponent(origin.city)}`,
       });
     }
   }

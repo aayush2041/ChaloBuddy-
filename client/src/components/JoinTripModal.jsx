@@ -39,6 +39,10 @@ export default function JoinTripModal() {
   if (!joinTripModalData) return null;
   const trip = joinTripModalData;
 
+  const isWomenOnlyTrip = Boolean(trip.isWomenOnly);
+  const isEligibleFemale = currentUser?.gender === 'FEMALE';
+  const isHost = currentUser?.id === trip.organizer?.id;
+
   const totalCost = trip.price * travelersCount;
 
   const handleNext = () => {
@@ -49,29 +53,30 @@ export default function JoinTripModal() {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
-    setTimeout(() => {
-      joinTrip(trip.id, {
-        travelersCount,
-        ...formData,
-      });
-      setIsSubmitting(false);
-      setIsConfirmed(true);
+    const res = await joinTrip(trip.id, {
+      travelersCount,
+      ...formData,
+    });
+    setIsSubmitting(false);
 
-      // Trigger celebratory confetti
-      try {
-        confetti({
-          particleCount: 80,
-          spread: 70,
-          origin: { y: 0.6 },
-          colors: ['#FF5A1F', '#071A2B', '#10B981'],
-        });
-      } catch (err) {
-        // ignore
-      }
-    }, 900);
+    if (res && res.success === false) {
+      return;
+    }
+
+    setIsConfirmed(true);
+    try {
+      confetti({
+        particleCount: 80,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#FF5A1F', '#071A2B', '#10B981'],
+      });
+    } catch (err) {
+      // ignore
+    }
   };
 
   const handleClose = () => {
@@ -83,6 +88,44 @@ export default function JoinTripModal() {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
       <div data-testid="join-trip-modal" className="bg-[#0C2438] text-white w-full max-w-xl rounded-3xl border border-white/15 shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+        {isWomenOnlyTrip && !isEligibleFemale ? (
+          <div className="p-6 sm:p-8 space-y-5 text-center">
+            <div className="w-16 h-16 rounded-full bg-pink-500/20 text-pink-400 mx-auto flex items-center justify-center text-3xl">
+              🌸
+            </div>
+            <div className="space-y-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-pink-400">
+                Women-Only Safe Space Policy
+              </span>
+              <h3 className="text-xl sm:text-2xl font-black text-white">
+                Eligibility Restriction
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-300 max-w-md mx-auto leading-relaxed">
+                This journey is exclusively reserved for verified female travelers to ensure a supportive and comfortable group dynamic. You are warmly welcome to explore our open group expeditions!
+              </p>
+            </div>
+            <div className="pt-2 flex flex-col sm:flex-row gap-3 justify-center">
+              <button
+                type="button"
+                onClick={handleClose}
+                className="btn-secondary-cb !py-2.5 !px-5 text-xs font-bold"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  handleClose();
+                  navigate('trips');
+                }}
+                className="btn-primary-cb !py-2.5 !px-5 text-xs font-bold"
+              >
+                Explore Open Group Trips
+              </button>
+            </div>
+          </div>
+        ) : (
+        <>
         {/* Header */}
         <div className="p-4 sm:p-5 border-b border-white/10 flex items-center justify-between bg-[#071A2B]">
           <div className="flex items-center gap-2.5">
@@ -355,6 +398,8 @@ export default function JoinTripModal() {
             </button>
           </div>
         )}
+        </>
+      )}
       </div>
     </div>
   );

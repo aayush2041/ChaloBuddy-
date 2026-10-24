@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useStore } from '../context/StoreContext';
+import { apiClient } from '../services/apiClient';
 import {
   MapPin,
   Calendar,
@@ -38,8 +39,19 @@ export default function TripDetailPage() {
   const trip = trips.find((t) => t.id === tripId) || trips[0];
 
   const [activeImageIdx, setActiveImageIdx] = useState(0);
-  const [activeTab, setActiveTab] = useState('itinerary'); // 'itinerary' | 'inclusions' | 'meeting' | 'reviews'
+  const [activeTab, setActiveTab] = useState('itinerary');
+  const [compatibility, setCompatibility] = useState(null);
   const saved = isTripSaved(trip.id);
+
+  React.useEffect(() => {
+    let isMounted = true;
+    apiClient.compatibility.getForTrip(trip.id).then((res) => {
+      if (isMounted && res && res.success && res.compatibility) {
+        setCompatibility(res.compatibility);
+      }
+    }).catch(() => {});
+    return () => { isMounted = false; };
+  }, [trip.id]);
 
   const handleAskOrganizer = () => {
     openDirectChatWithUser(trip.organizer?.id || 'usr_aarav');
@@ -120,6 +132,31 @@ export default function TripDetailPage() {
             ))}
           </div>
         </div>
+
+        {/* Women-Only Safe Space Notice Banner */}
+        {trip.isWomenOnly && (
+          <div className="bg-gradient-to-r from-pink-500/15 via-rose-500/10 to-pink-500/15 border border-pink-400/40 rounded-3xl p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-pink-500/20 text-pink-600 flex items-center justify-center shrink-0">
+                <Sparkles className="w-6 h-6 text-pink-500" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-extrabold text-[#071A2B] text-base sm:text-lg">Women-Only Verified Expedition 🌸</h3>
+                  <span className="text-[10px] bg-pink-100 text-pink-700 font-bold px-2 py-0.5 rounded-full border border-pink-200">
+                    Safe Space Policy
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 mt-1 max-w-xl">
+                  Exclusively open to female travelers. Includes verified female group leads, vetted twin-share private chalets, and zero-tolerance safety standards.
+                </p>
+              </div>
+            </div>
+            <span className="text-xs font-bold text-pink-600 bg-white px-3.5 py-1.5 rounded-full border border-pink-200 shadow-xs">
+              Backend Verified Female Only
+            </span>
+          </div>
+        )}
 
         {/* Two-Column Detail Layout: Left Info, Right Sticky Booking Card */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -377,6 +414,39 @@ export default function TripDetailPage() {
 
           {/* Right Sticky Booking Card matching Section 9 */}
           <div className="lg:col-span-4 sticky top-28 space-y-4">
+            {/* Explainable Compatibility Match Widget */}
+            {compatibility && (
+              <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-md space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                      Buddy Compatibility
+                    </span>
+                    <h3 className="font-extrabold text-sm text-[#071A2B]">
+                      {compatibility.summary}
+                    </h3>
+                  </div>
+                  <div className="flex items-center gap-1 px-3 py-1 rounded-xl bg-emerald-50 text-emerald-700 font-black text-base border border-emerald-200">
+                    <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
+                    <span>{compatibility.score}%</span>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5 pt-2 border-t border-slate-100 text-[11px]">
+                  {compatibility.factors.map((f, i) => (
+                    <div key={i} className="flex items-start gap-1.5">
+                      <span className={f.match ? 'text-emerald-500 font-bold' : 'text-slate-400'}>
+                        {f.match ? '✓' : '•'}
+                      </span>
+                      <p className="text-slate-600 leading-snug">
+                        <strong className="text-[#071A2B]">{f.label}:</strong> {f.detail}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/90 shadow-xl space-y-5">
               <div>
                 <span className="text-xs text-slate-500 font-medium block">Price per traveler</span>

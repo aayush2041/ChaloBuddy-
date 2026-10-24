@@ -256,6 +256,11 @@ export async function executeTripSearch(allTrips, criteria = {}) {
         }
       }
 
+      // 7. Women-Only Trip filter
+      if (criteria.womenOnly === true || criteria.womenOnly === 'true') {
+        if (!trip.isWomenOnly) return false;
+      }
+
       return true;
     });
 
