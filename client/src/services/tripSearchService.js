@@ -1,6 +1,6 @@
 /**
  * Trip Search & Filtering Service
- * Reliable querying of real trip catalog with location, date, and passenger matching.
+ * Reliable querying of real trip catalog with location, date, category, budget, and passenger matching.
  */
 
 /**
@@ -101,6 +101,85 @@ function dateMatches(searchDate, trip) {
 }
 
 /**
+ * Checks if a trip category or vibe matches the requested category filter.
+ */
+function categoryMatches(category, trip) {
+  if (!category || category === 'all') return true;
+  const cat = String(category).toLowerCase().trim();
+  const tripVibes = (trip.vibes || []).map((v) => String(v).toLowerCase());
+  const tripStyle = String(trip.travelStyle || '').toLowerCase();
+  const tripTitle = String(trip.title || '').toLowerCase();
+  const tripCat = String(trip.category || '').toLowerCase();
+  const tripVibe = trip.vibe ? String(trip.vibe).toLowerCase() : '';
+
+  const combined = [
+    ...tripVibes,
+    tripStyle,
+    tripTitle,
+    tripCat,
+    tripVibe,
+  ].join(' ');
+
+  if (cat === 'beaches') {
+    return (
+      tripVibes.includes('beaches') ||
+      tripVibes.includes('beach') ||
+      combined.includes('beach') ||
+      combined.includes('coastal') ||
+      combined.includes('goa')
+    );
+  }
+  if (cat === 'mountains') {
+    return (
+      tripVibes.includes('mountains') ||
+      combined.includes('mountain') ||
+      combined.includes('himalay') ||
+      combined.includes('alpine') ||
+      combined.includes('pass')
+    );
+  }
+  if (cat === 'trekking') {
+    return (
+      tripVibes.includes('trekking') ||
+      tripVibes.includes('trek') ||
+      combined.includes('trek')
+    );
+  }
+  if (cat === 'cultural') {
+    return (
+      tripVibes.includes('cultural') ||
+      tripVibes.includes('culture') ||
+      combined.includes('cultur') ||
+      combined.includes('heritage') ||
+      combined.includes('temple') ||
+      combined.includes('spiritual') ||
+      combined.includes('history')
+    );
+  }
+  if (cat === 'weekend') {
+    return (
+      tripVibes.includes('weekend') ||
+      (trip.duration &&
+        (trip.duration.includes('2 Days') ||
+          trip.duration.includes('3 Days') ||
+          trip.duration.includes('4 Days')))
+    );
+  }
+  if (cat === 'road-trips' || cat === 'adventure') {
+    return (
+      tripVibes.includes('road trips') ||
+      tripVibes.includes('adventure') ||
+      combined.includes('road trip') ||
+      combined.includes('adventure') ||
+      combined.includes('expedition') ||
+      combined.includes('backpack')
+    );
+  }
+
+  return combined.includes(cat);
+}
+
+/**
  * Executes trip search against real catalog with validation and error handling.
  */
 export async function executeTripSearch(allTrips, criteria = {}) {
@@ -109,6 +188,10 @@ export async function executeTripSearch(allTrips, criteria = {}) {
     destination = '',
     date = null,
     travelers = 1,
+    maxPrice = null,
+    minPrice = null,
+    category = 'all',
+    sortBy = 'recommended',
   } = criteria;
 
   try {
@@ -118,40 +201,88 @@ export async function executeTripSearch(allTrips, criteria = {}) {
     const results = list.filter((trip) => {
       // 1. From / Starting Location filter
       const tripStarting = getTripStartingLocation(trip);
-      const matchesFrom = locationMatches(from, tripStarting) ||
+      const matchesFrom =
+        locationMatches(from, tripStarting) ||
         locationMatches(from, trip.meetingPoint);
       if (!matchesFrom) return false;
 
       // 2. Destination filter
-      const matchesDest = locationMatches(destination, trip.destination) ||
+      const matchesDest =
+        locationMatches(destination, trip.destination) ||
         locationMatches(destination, trip.title) ||
         locationMatches(destination, trip.state) ||
         locationMatches(destination, trip.region);
       if (!matchesDest) return false;
 
       // 3. Passenger / Available Seats filter
-      const availableSeats = Number(trip.spotsLeft ?? (trip.maxGroupSize - (trip.currentGroupSize || 0)) ?? 4);
+      const availableSeats = Number(
+        trip.spotsLeft ??
+          (trip.maxGroupSize - (trip.currentGroupSize || 0)) ??
+          4
+      );
       if (availableSeats < validTravelers) return false;
 
       // 4. Date filter
       if (!dateMatches(date, trip)) return false;
 
+      // 5. Category / Travel Style filter
+      if (!categoryMatches(category, trip)) return false;
+
+      // 6. Price range filters
+      if (
+        maxPrice !== null &&
+        maxPrice !== undefined &&
+        maxPrice !== '' &&
+        !isNaN(Number(maxPrice))
+      ) {
+        const numMax = Number(maxPrice);
+        if (numMax > 0 && Number(trip.price) > numMax) return false;
+      }
+
+      if (
+        minPrice !== null &&
+        minPrice !== undefined &&
+        minPrice !== '' &&
+        !isNaN(Number(minPrice))
+      ) {
+        const numMin = Number(minPrice);
+        if (numMin > 0 && Number(trip.price) < numMin) return false;
+      }
+
       return true;
     });
 
+    // 7. Apply Sorting
+    const sortedResults = [...results];
+    if (sortBy === 'price-low') {
+      sortedResults.sort((a, b) => Number(a.price || 0) - Number(b.price || 0));
+    } else if (sortBy === 'price-high') {
+      sortedResults.sort((a, b) => Number(b.price || 0) - Number(a.price || 0));
+    } else if (sortBy === 'seats') {
+      const getSeats = (t) =>
+        Number(t.spotsLeft ?? (t.maxGroupSize - (t.currentGroupSize || 0)) ?? 0);
+      sortedResults.sort((a, b) => getSeats(b) - getSeats(a));
+    }
+
     return {
       success: true,
-      results,
-      totalFound: results.length,
+      results: sortedResults,
+      totalFound: sortedResults.length,
       criteria: {
         from: from.trim(),
         destination: destination.trim(),
         date,
         travelers: validTravelers,
+        category,
+        maxPrice: maxPrice ? Number(maxPrice) : null,
+        minPrice: minPrice ? Number(minPrice) : null,
+        sortBy,
       },
     };
   } catch (err) {
     console.error('Trip search technical execution error:', err);
-    throw new Error('We could not load trips at this moment. Please check your search parameters and try again.');
+    throw new Error(
+      'We could not load trips at this moment. Please check your search parameters and try again.'
+    );
   }
 }
