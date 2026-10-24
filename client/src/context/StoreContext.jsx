@@ -12,6 +12,7 @@ import {
 import { generateTripPlan } from '../services/tripPlannerService';
 import { getTripStartingLocation } from '../services/tripSearchService';
 import { apiClient } from '../services/apiClient';
+import { fetchMultimodalRoutes } from '../services/routeService';
 
 const StoreContext = createContext(null);
 
@@ -292,6 +293,37 @@ export function StoreProvider({ children }) {
   });
 
   // 13. Smart Trip Planner State
+    // Rome2Rio Multimodal Journey Search State
+  const [journeySearchParams, setJourneySearchParams] = useState(() => {
+    try {
+      const saved = localStorage.getItem('cb_journey_search');
+      return saved ? JSON.parse(saved) : {
+        origin: 'Delhi, India',
+        destination: 'Manali, Himachal Pradesh',
+        departureDate: new Date().toISOString().split('T')[0],
+        returnDate: '',
+        travelers: 2,
+      };
+    } catch {
+      return {
+        origin: 'Delhi, India',
+        destination: 'Manali, Himachal Pradesh',
+        departureDate: new Date().toISOString().split('T')[0],
+        returnDate: '',
+        travelers: 2,
+      };
+    }
+  });
+
+  const [journeyResults, setJourneyResults] = useState(() => {
+    try {
+      const saved = localStorage.getItem('cb_journey_results');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
   const [smartPlan, setSmartPlan] = useState(() => {
     try {
       const saved = localStorage.getItem('cb_smart_plan');
@@ -380,6 +412,8 @@ export function StoreProvider({ children }) {
     try {
       if (smartPlan) {
         localStorage.setItem('cb_smart_plan', JSON.stringify(smartPlan));
+      if (journeySearchParams) localStorage.setItem('cb_journey_search', JSON.stringify(journeySearchParams));
+      if (journeyResults) localStorage.setItem('cb_journey_results', JSON.stringify(journeyResults));
       }
     } catch (err) {
       console.warn('Failed to serialize cb_smart_plan:', err);
@@ -1099,7 +1133,40 @@ const logoutUser = async () => {
     return newSavedPlan;
   };
 
-  const generatePlan = async (criteria = {}) => {
+    // Rome2Rio Journey Search Action
+  const searchJourney = async (params) => {
+    const updatedParams = {
+      ...journeySearchParams,
+      ...params,
+      travelers: Math.max(1, Number(params.travelers) || 2),
+    };
+    setJourneySearchParams(updatedParams);
+    try {
+      localStorage.setItem('cb_journey_search', JSON.stringify(updatedParams));
+    } catch {}
+
+    try {
+      const routesData = await fetchMultimodalRoutes(
+        updatedParams.origin,
+        updatedParams.destination,
+        updatedParams.travelers,
+        4,
+        updatedParams.departureDate
+      );
+      setJourneyResults(routesData);
+      try {
+        localStorage.setItem('cb_journey_results', JSON.stringify(routesData));
+      } catch {}
+      navigate('plan-result');
+      return routesData;
+    } catch (err) {
+      console.error('Journey search error:', err);
+      addToast('Could not find routes for these locations. Please check the spelling.', 'error');
+      throw err;
+    }
+  };
+
+const generatePlan = async (criteria = {}) => {
     const destination = criteria.destination || criteria.destinationObj || (selectedLocation ? selectedLocation.fullName : null);
     const origin = criteria.origin || criteria.startingLocation || criteria.originObj || null;
 
@@ -1190,6 +1257,11 @@ const logoutUser = async () => {
         notifications,
         smartPlan,
         setSmartPlan,
+        journeySearchParams,
+        setJourneySearchParams,
+        journeyResults,
+        setJourneyResults,
+        searchJourney,
         selectedLocation,
         setSelectedLocation,
         myTrips,

@@ -1,867 +1,776 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useStore } from '../context/StoreContext';
+import LocationAutocomplete from '../components/LocationAutocomplete';
+import { fetchMultimodalRoutes } from '../services/routeService';
 import {
-  Sparkles,
-  MapPin,
-  Calendar,
-  Wallet,
-  Users,
-  Route,
-  CloudSun,
-  BedDouble,
-  Clock,
-  Plus,
-  Trash2,
-  RefreshCw,
-  Share2,
-  Save,
-  CheckCircle2,
-  AlertTriangle,
-  ArrowRight,
-  ChevronDown,
-  Car,
   Train,
-  Plane,
   Bus,
+  Plane,
+  Car,
+  Anchor,
+  Clock,
+  ArrowRight,
+  ArrowLeft,
+  ArrowRightLeft,
+  Search,
+  Calendar,
+  Users,
   ShieldCheck,
-  Utensils,
-  Compass,
-  Edit3,
-  X,
-  Info,
-  Check,
-  Printer,
+  MapPin,
   ExternalLink,
-  Sunrise,
-  Sun,
-  Sunset,
+  Printer,
+  Share2,
+  Bookmark,
+  CheckCircle2,
+  Info,
+  Filter,
+  SlidersHorizontal,
+  ChevronDown,
+  ChevronUp,
+  AlertCircle,
+  Loader2,
+  Navigation,
+  Compass,
+  Building2,
+  RotateCcw,
 } from 'lucide-react';
 
 export default function PlanResultPage() {
   const {
-    smartPlan,
-    generatePlan,
-    saveGeneratedPlan,
+    journeySearchParams,
+    setJourneySearchParams,
+    journeyResults,
+    setJourneyResults,
     formatPrice,
-    setShareModalData,
+    saveGeneratedPlan,
     addToast,
     navigate,
   } = useStore();
 
-  const [activeTab, setActiveTab] = useState('itinerary'); // 'itinerary' | 'budget' | 'stay' | 'transport'
-  const [showEditModal, setShowEditModal] = useState(false);
+  // Search parameters
+  const [origin, setOrigin] = useState(journeySearchParams?.origin || 'New Delhi, India');
+  const [destination, setDestination] = useState(journeySearchParams?.destination || 'Manali, Himachal Pradesh');
+  const [departureDate, setDepartureDate] = useState(
+    journeySearchParams?.departureDate || new Date().toISOString().split('T')[0]
+  );
+  const [travelers, setTravelers] = useState(journeySearchParams?.travelers || 2);
 
-  // Edit Constraints state
-  const [editBudget, setEditBudget] = useState(smartPlan?.userTargetBudget || 25000);
-  const [editTravelers, setEditTravelers] = useState(smartPlan?.travelers || 2);
+  // UI state
+  const [isModifyingSearch, setIsModifyingSearch] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [selectedRouteId, setSelectedRouteId] = useState(null);
 
-  if (!smartPlan) {
-    return (
-      <div className="min-h-screen bg-[#F5F7F8] pt-32 text-center p-8 text-[#071A2B]">
-        <div className="max-w-md mx-auto bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-4">
-          <Compass className="w-10 h-10 text-[#FF5A1F] mx-auto" />
-          <h2 className="text-xl font-black text-[#071A2B]">No Generated Plan Found</h2>
-          <p className="text-xs text-slate-500">
-            Create a realistic, budget-verified trip plan using the Smart Trip Planner.
-          </p>
-          <button
-            onClick={() => navigate('plan-trip')}
-            className="btn-primary-cb !text-xs !py-2.5 !px-6 cursor-pointer"
-          >
-            Create New Trip Plan
-          </button>
-        </div>
-      </div>
-    );
-  }
+  // Sorting: 'best' | 'fastest' | 'cheapest'
+  const [sortBy, setSortBy] = useState('best');
 
-  const handleSavePlan = () => {
-    if (!smartPlan) return;
-    saveGeneratedPlan(smartPlan);
-    navigate('my-trips', { tab: 'saved' });
+  // Filtering: 'ALL' | 'TRAIN' | 'BUS' | 'FLIGHT' | 'CAB' | 'CAR' | 'FERRY' | 'MIXED'
+  const [selectedModeFilter, setSelectedModeFilter] = useState('ALL');
+  const [maxTransfersFilter, setMaxTransfersFilter] = useState('ALL'); // 'ALL' | 'DIRECT' | '1'
+
+  // If no results in memory, trigger search automatically on mount
+  useEffect(() => {
+    if (!journeyResults && origin && destination) {
+      setIsSearching(true);
+      fetchMultimodalRoutes(origin, destination, travelers, 4, departureDate)
+        .then((res) => {
+          setJourneyResults(res);
+        })
+        .catch((err) => {
+          console.error('Failed to load initial journey routes:', err);
+        })
+        .finally(() => {
+          setIsSearching(false);
+        });
+    }
+  }, [journeyResults, origin, destination, travelers, departureDate, setJourneyResults]);
+
+  // Execute modified search
+  const handleModifySearch = async (e) => {
+    e?.preventDefault();
+    if (!origin.trim() || !destination.trim()) {
+      addToast('Please enter both origin and destination', 'error');
+      return;
+    }
+
+    setIsSearching(true);
+    setSelectedRouteId(null);
+    try {
+      const updatedParams = {
+        origin,
+        destination,
+        departureDate,
+        travelers,
+      };
+      setJourneySearchParams(updatedParams);
+      const res = await fetchMultimodalRoutes(origin, destination, travelers, 4, departureDate);
+      setJourneyResults(res);
+      setIsModifyingSearch(false);
+      addToast(`Updated routes for ${origin.split(',')[0]} to ${destination.split(',')[0]}`, 'info');
+    } catch (err) {
+      addToast('Failed to update routes. Please check spelling.', 'error');
+    } finally {
+      setIsSearching(false);
+    }
   };
 
-  const handleApplyEditConstraints = (e) => {
-    e.preventDefault();
-    const updatedCriteria = {
-      ...(smartPlan.criteria || {}),
-      userBudget: Number(editBudget),
-      budget: Number(editBudget),
-      budgetType: 'total',
-      travelers: Number(editTravelers),
-      adults: Number(editTravelers),
+  const handleSwapLocations = () => {
+    const temp = origin;
+    setOrigin(destination);
+    setDestination(temp);
+  };
+
+  const allRoutes = journeyResults?.allRoutes || [];
+
+  // Filter routes
+  const filteredRoutes = useMemo(() => {
+    return allRoutes.filter((r) => {
+      // Mode filter
+      if (selectedModeFilter !== 'ALL') {
+        const hasMode =
+          r.mode === selectedModeFilter ||
+          (Array.isArray(r.modeSummary) && r.modeSummary.includes(selectedModeFilter));
+        if (!hasMode) return false;
+      }
+
+      // Transfers filter
+      if (maxTransfersFilter === 'DIRECT' && r.transfersCount > 0) return false;
+      if (maxTransfersFilter === '1' && r.transfersCount > 1) return false;
+
+      return true;
+    });
+  }, [allRoutes, selectedModeFilter, maxTransfersFilter]);
+
+  // Sort routes
+  const sortedRoutes = useMemo(() => {
+    const list = [...filteredRoutes];
+    if (sortBy === 'cheapest') {
+      return list.sort((a, b) => a.totalCost - b.totalCost);
+    }
+    if (sortBy === 'fastest') {
+      return list.sort((a, b) => a.durationHours - b.durationHours);
+    }
+    // 'best' - recommended balance
+    return list.sort((a, b) => {
+      if (a.isBest && !b.isBest) return -1;
+      if (!a.isBest && b.isBest) return 1;
+      return a.durationHours - b.durationHours;
+    });
+  }, [filteredRoutes, sortBy]);
+
+  const selectedRoute = allRoutes.find((r) => r.id === selectedRouteId) || null;
+
+  // Mode Icon helper
+  const getModeIcon = (mode) => {
+    switch (mode) {
+      case 'TRAIN':
+        return <Train className="w-4 h-4 text-amber-500" />;
+      case 'BUS':
+        return <Bus className="w-4 h-4 text-emerald-500" />;
+      case 'FLIGHT':
+        return <Plane className="w-4 h-4 text-sky-500" />;
+      case 'FERRY':
+        return <Anchor className="w-4 h-4 text-teal-500" />;
+      case 'CAB':
+      case 'TAXI':
+        return <Car className="w-4 h-4 text-orange-500" />;
+      case 'CAR':
+        return <Car className="w-4 h-4 text-purple-500" />;
+      default:
+        return <Navigation className="w-4 h-4 text-slate-500" />;
+    }
+  };
+
+  // Price Classification Badge helper
+  const renderPriceBadge = (classification) => {
+    switch (classification) {
+      case 'LIVE_OFFER':
+        return (
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+            ✓ Live Offer
+          </span>
+        );
+      case 'CALCULATED_ESTIMATE':
+        return (
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-100 text-sky-800 border border-sky-200">
+            Calculated Estimate
+          </span>
+        );
+      case 'INDICATIVE_ESTIMATE':
+      default:
+        return (
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">
+            Indicative Estimate
+          </span>
+        );
+    }
+  };
+
+  // Save Route to Workspace
+  const handleSaveRoute = () => {
+    if (!selectedRoute) return;
+    const planToSave = {
+      tripTitle: `${selectedRoute.title} (${origin.split(',')[0]} to ${destination.split(',')[0]})`,
+      destination: destination,
+      destinationCity: destination.split(',')[0].trim(),
+      originCity: origin.split(',')[0].trim(),
+      startDate: departureDate,
+      endDate: departureDate,
+      travelers,
+      totalBudget: selectedRoute.totalCost,
+      transitOption: selectedRoute,
+      dayPlans: selectedRoute.segments,
     };
-
-    generatePlan(updatedCriteria);
-    setShowEditModal(false);
-    addToast('Plan recalculated with your updated travel criteria!', 'success');
+    saveGeneratedPlan(planToSave);
   };
 
-  const isOverBudget = Boolean(smartPlan.isOverBudget);
-  const shortfallTotal = Number(smartPlan.shortfallTotal) || 0;
-  const shortfallPerPerson = Number(smartPlan.shortfallPerPerson) || 0;
-  const remainingBudget = Number(smartPlan.remainingBudget) || 0;
-  const userBudget = Number(smartPlan.userTargetBudget) || 0;
-  const totalCost = Number(smartPlan.totalBudget) || 0;
+  // Print route
+  const handlePrint = () => {
+    window.print();
+  };
 
-  // Breakdown items (strictly 6 items)
-  const breakdown = smartPlan.budgetBreakdown || [];
+  // Share route
+  const handleShare = () => {
+    navigator.clipboard?.writeText?.(window.location.href);
+    addToast('Route link copied to clipboard!', 'info');
+  };
 
   return (
-    <div className="min-h-screen bg-[#F5F7F8] pt-24 pb-28 text-[#071A2B]">
-      {/* 1. TOP HEADER BANNER */}
-      <section className="bg-[#071A2B] text-white py-10 px-4 sm:px-6 lg:px-8 border-b border-white/10">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-end justify-between gap-6">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 border border-white/15 text-xs font-semibold text-slate-200">
-              <Sparkles className="w-3.5 h-3.5 text-[#FF5A1F]" />
-              <span>Smart Itinerary</span>
+    <div className="min-h-screen bg-[#F5F7F8] pt-16 pb-24 text-[#071A2B]">
+      {/* STICKY TOP SEARCH SUMMARY & MODIFIER BAR */}
+      <section className="bg-[#071A2B] text-white border-b border-white/10 sticky top-12 z-30 shadow-md">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-3">
+            {/* Search Pill Summary */}
+            <div className="flex items-center gap-2 text-xs sm:text-sm font-extrabold flex-wrap">
+              <span className="text-white truncate max-w-[150px] sm:max-w-[200px]">{origin}</span>
+              <ArrowRight className="w-4 h-4 text-[#FF5A1F] shrink-0" />
+              <span className="text-white truncate max-w-[150px] sm:max-w-[200px]">{destination}</span>
+              <span className="text-slate-400 font-normal hidden sm:inline">•</span>
+              <span className="text-slate-300 font-medium hidden sm:inline">{departureDate}</span>
+              <span className="text-slate-400 font-normal hidden sm:inline">•</span>
+              <span className="text-slate-300 font-medium hidden sm:inline">{travelers} Travelers</span>
             </div>
-            <h1 className="text-2xl sm:text-4xl font-black text-white">
-              {smartPlan.tripTitle}
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-300">
-              {smartPlan.originCity ? `${smartPlan.originCity} ➔ ` : ''}
-              {smartPlan.destination} • {smartPlan.duration} • {smartPlan.travelers} {smartPlan.travelers === 1 ? 'Traveler' : 'Travelers'}
-            </p>
-          </div>
 
-          {/* Action CTAs: Edit, Share, Save */}
-          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+            {/* Edit Search / Modify Toggle Button */}
             <button
-              onClick={() => setShowEditModal(true)}
-              className="flex-1 sm:flex-initial btn-secondary-cb !bg-white/10 !text-white !border-white/20 hover:!bg-white/20 !py-2.5 sm:!py-2 !px-3.5 !text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer"
+              onClick={() => setIsModifyingSearch(!isModifyingSearch)}
+              className="btn-secondary-cb !bg-white/10 !text-white !border-white/20 hover:!bg-white/20 !py-1.5 !px-4 text-xs font-bold flex items-center gap-1.5 cursor-pointer self-end md:self-auto"
             >
-              <Edit3 className="w-3.5 h-3.5 text-amber-400" />
-              <span>Edit Budget</span>
-            </button>
-
-            <button
-              onClick={() =>
-                setShareModalData({
-                  title: smartPlan.tripTitle,
-                  url: window.location.href,
-                })
-              }
-              className="btn-secondary-cb !bg-white/10 !text-white !border-white/20 hover:!bg-white/20 !py-2.5 sm:!py-2 !px-3.5 !text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer"
-            >
-              <Share2 className="w-3.5 h-3.5" />
-              <span>Share</span>
-            </button>
-
-            <button
-              onClick={() => window.print()}
-              className="btn-secondary-cb !bg-white/10 !text-white !border-white/20 hover:!bg-white/20 !py-2.5 sm:!py-2 !px-3.5 !text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer"
-              title="Print or Export PDF"
-            >
-              <Printer className="w-3.5 h-3.5 text-sky-400" />
-              <span>Print / Export</span>
-            </button>
-
-            <button
-              onClick={handleSavePlan}
-              className="flex-1 sm:flex-initial btn-primary-cb !py-2.5 sm:!py-2 !px-5 !text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-md shadow-[#FF5A1F]/30"
-            >
-              <Save className="w-3.5 h-3.5" />
-              <span>Save Plan</span>
+              <Search className="w-3.5 h-3.5 text-[#FF5A1F]" />
+              <span>{isModifyingSearch ? 'Close Search' : 'Modify Search'}</span>
+              {isModifyingSearch ? <ChevronUp className="w-3.5 h-3.5 ml-1" /> : <ChevronDown className="w-3.5 h-3.5 ml-1" />}
             </button>
           </div>
+
+          {/* Expandable Inline Search Form */}
+          {isModifyingSearch && (
+            <form onSubmit={handleModifySearch} className="pt-4 pb-2 border-t border-white/10 mt-3 space-y-3 animate-fade-in text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-11 gap-2.5 items-end">
+                <div className="lg:col-span-4">
+                  <label className="text-[10px] font-bold uppercase text-slate-300 block mb-1">Origin</label>
+                  <LocationAutocomplete
+                    value={origin}
+                    onChange={(val) => setOrigin(val)}
+                    onSelectLocation={(loc) => setOrigin(loc.fullName)}
+                    theme="dark"
+                  />
+                </div>
+
+                <div className="hidden lg:flex lg:col-span-1 justify-center pb-2">
+                  <button
+                    type="button"
+                    onClick={handleSwapLocations}
+                    className="p-2 rounded-full bg-white/10 hover:bg-[#FF5A1F] text-white transition-colors cursor-pointer"
+                  >
+                    <ArrowRightLeft className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                <div className="lg:col-span-4">
+                  <label className="text-[10px] font-bold uppercase text-slate-300 block mb-1">Destination</label>
+                  <LocationAutocomplete
+                    value={destination}
+                    onChange={(val) => setDestination(val)}
+                    onSelectLocation={(loc) => setDestination(loc.fullName)}
+                    theme="dark"
+                  />
+                </div>
+
+                <div className="lg:col-span-2">
+                  <button
+                    type="submit"
+                    disabled={isSearching}
+                    className="w-full btn-primary-cb !py-2.5 !px-4 text-xs font-extrabold flex items-center justify-center gap-1.5 cursor-pointer shadow-md shadow-[#FF5A1F]/30"
+                  >
+                    {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                    <span>Update Routes</span>
+                  </button>
+                </div>
+              </div>
+            </form>
+          )}
         </div>
       </section>
 
-      {/* 2. MAIN RESULTS CONTAINER */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 space-y-6">
-
-        {/* IMPOSSIBLE / SHORTFALL BUDGET ALERT (PROMPT REQUIREMENT) */}
-        {isOverBudget && (
-          <div
-            data-testid="planner-overbudget-alert"
-            className="bg-amber-500/10 border-2 border-amber-500/40 rounded-3xl p-6 text-[#071A2B] space-y-4"
-          >
-            <div className="flex items-start gap-3">
-              <div className="p-2 bg-amber-500 text-white rounded-xl shrink-0 mt-0.5">
-                <AlertTriangle className="w-5 h-5" />
+      {/* MAIN TWO-COLUMN SPLIT LAYOUT (ROME2RIO EXPERIENCE) */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* LEFT COLUMN: ROUTES LIST OR DETAILED ROUTE VIEW (7 of 12 cols) */}
+          <div className="lg:col-span-7 space-y-4">
+            {isSearching ? (
+              <div className="bg-white p-12 rounded-3xl border border-slate-200 text-center space-y-3">
+                <Loader2 className="w-10 h-10 text-[#FF5A1F] animate-spin mx-auto" />
+                <h3 className="font-extrabold text-base text-[#071A2B]">Comparing Transport Options...</h3>
+                <p className="text-xs text-slate-500">Querying live schedules, IRCTC rails, redBus coaches, and flight fares</p>
               </div>
-              <div className="space-y-1">
-                <h3 className="font-black text-base sm:text-lg text-amber-950">
-                  {smartPlan.optimization?.explanation ||
-                    `This trip is unlikely to fit within ₹${userBudget.toLocaleString('en-IN')} for ${smartPlan.travelers} ${smartPlan.travelers === 1 ? 'person' : 'people'}.`}
-                </h3>
-                <p className="text-xs text-amber-900 leading-relaxed">
-                  The minimum realistic cost for this journey is{' '}
-                  <strong className="text-[#071A2B]">₹{totalCost.toLocaleString('en-IN')}</strong> (₹{Math.round(totalCost / smartPlan.travelers).toLocaleString('en-IN')}/person), creating a shortfall of{' '}
-                  <span className="font-extrabold text-rose-600">
-                    ₹{shortfallTotal.toLocaleString('en-IN')} (₹{shortfallPerPerson.toLocaleString('en-IN')}/person)
-                  </span>. We do not fabricate cheap, unrealistic itineraries.
-                </p>
-              </div>
-            </div>
+            ) : selectedRoute ? (
+              /* ========================================================================= */
+              /* VIEW B: DETAILED ROUTE VIEW (DRILL-DOWN SEGMENT BREAKDOWN)                */
+              /* ========================================================================= */
+              <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden space-y-6 animate-fade-in">
+                {/* Back to Results Header */}
+                <div className="p-4 sm:p-5 bg-[#071A2B] text-white flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedRouteId(null)}
+                    className="flex items-center gap-2 text-xs font-extrabold text-slate-300 hover:text-white transition-colors cursor-pointer group"
+                  >
+                    <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform text-[#FF5A1F]" />
+                    <span>All Transport Alternatives</span>
+                  </button>
 
-            {/* Realistic Options List (Prompt Requirement) */}
-            <div className="bg-white/90 p-5 rounded-2xl border border-amber-300 space-y-2 text-xs">
-              <span className="font-bold text-slate-900 flex items-center gap-1.5">
-                <Info className="w-4 h-4 text-amber-600" />
-                Realistic options to make this trip work:
-              </span>
-              <ul className="space-y-1.5 text-slate-700 pl-5 list-disc">
-                {(smartPlan.optimization?.actionableOptions && smartPlan.optimization.actionableOptions.length > 0
-                  ? smartPlan.optimization.actionableOptions
-                  : [
-                      `Reduce number of days to lower lodging and meal expenses.`,
-                      `Increase budget to at least ₹${totalCost.toLocaleString('en-IN')} to cover realistic expenses.`,
-                      `Choose cheaper transport (e.g. Sleeper Train or AC Bus instead of Flights/Private Cabs).`,
-                      `Choose cheaper accommodation (e.g. Hostels or Budget Homestays instead of Hotels).`,
-                    ]
-                ).map((opt, i) => (
-                  <li key={i} className="leading-relaxed">
-                    <strong>{opt}</strong>
-                  </li>
-                ))}
-              </ul>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handlePrint}
+                      className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
+                      title="Print Route Details"
+                    >
+                      <Printer className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleShare}
+                      className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
+                      title="Share Route"
+                    >
+                      <Share2 className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveRoute}
+                      className="btn-primary-cb !py-1.5 !px-3 text-xs font-bold flex items-center gap-1 cursor-pointer"
+                    >
+                      <Bookmark className="w-3.5 h-3.5" />
+                      <span>Save Route</span>
+                    </button>
+                  </div>
+                </div>
 
-              <div className="pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowEditModal(true)}
-                  className="btn-primary-cb !py-2 !px-4 !text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Edit3 className="w-3.5 h-3.5" />
-                  <span>Adjust Budget or Travelers →</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* 3. METRIC CARDS OVERVIEW */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          {/* Budget Metric Card */}
-          <div className="bg-white p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
-            <span className="text-xs text-slate-500 flex items-center gap-1 font-bold">
-              <Wallet className="w-3.5 h-3.5 text-[#FF5A1F]" />
-              Calculated Total Cost
-            </span>
-            <div className="mt-2">
-              <p className="text-2xl font-black text-[#071A2B]">
-                {formatPrice(totalCost)}
-              </p>
-              <p className="text-xs font-bold text-[#FF5A1F] mt-0.5">
-                ₹{Number(smartPlan.perPersonBudget).toLocaleString('en-IN')} / person
-              </p>
-              <p className="text-[11px] text-slate-400 mt-1">
-                Your entered budget: ₹{userBudget.toLocaleString('en-IN')}
-              </p>
-            </div>
-          </div>
-
-          {/* Weather Metric Card */}
-          <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
-            <span className="text-xs text-slate-500 flex items-center gap-1 font-bold">
-              <CloudSun className="w-3.5 h-3.5 text-amber-500" />
-              Weather Estimate
-            </span>
-            <div className="mt-2">
-              <p className="text-sm font-black text-[#071A2B] truncate">
-                {smartPlan.weather}
-              </p>
-              <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">
-                {smartPlan.weatherDetails?.summary || 'Ideal sightseeing conditions'}
-              </p>
-              <span className="inline-block mt-1 text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded">
-                Historical climate model
-              </span>
-            </div>
-          </div>
-
-          {/* Stay Metric Card */}
-          <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
-            <span className="text-xs text-slate-500 flex items-center gap-1 font-bold">
-              <BedDouble className="w-3.5 h-3.5 text-sky-500" />
-              Selected Stay
-            </span>
-            <div className="mt-2">
-              <p className="text-sm font-black text-[#071A2B] truncate">
-                {smartPlan.stayRecommendation?.name}
-              </p>
-              <p className="text-[11px] text-slate-500 truncate mt-0.5">
-                {smartPlan.stayRecommendation?.roomLabel || 'Standard Accommodation'}
-              </p>
-              <p className="text-xs font-bold text-emerald-600 mt-1">
-                ₹{Number(smartPlan.stayRecommendation?.totalPrice || 0).toLocaleString('en-IN')} total ({smartPlan.nights} nights)
-              </p>
-            </div>
-          </div>
-
-          {/* Route Metric Card */}
-          <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
-            <span className="text-xs text-slate-500 flex items-center gap-1 font-bold">
-              <Route className="w-3.5 h-3.5 text-purple-500" />
-              Transit Route
-            </span>
-            <div className="mt-2">
-              <p className="text-sm font-black text-[#071A2B] truncate">
-                {smartPlan.distance}
-              </p>
-              <p className="text-[11px] text-slate-500 truncate mt-0.5">
-                {smartPlan.transportRecommendation?.method}
-              </p>
-              <p className="text-xs font-bold text-[#FF5A1F] mt-1">
-                {smartPlan.transportRecommendation?.duration} duration
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* 4. TAB SELECTION */}
-        <div className="flex items-center gap-2 border-b border-slate-200 pb-1 text-sm font-bold overflow-x-auto scrollbar-none">
-          {[
-            { id: 'itinerary', label: 'Day-by-Day Itinerary' },
-            { id: 'budget', label: 'Complete Cost Calculation' },
-            { id: 'stay', label: 'Accommodation Details' },
-            { id: 'transport', label: 'Transit Route & Options' },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`pb-3 px-4 transition-all cursor-pointer whitespace-nowrap ${
-                activeTab === tab.id
-                  ? 'text-[#FF5A1F] border-b-2 border-[#FF5A1F]'
-                  : 'text-slate-500 hover:text-[#071A2B]'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {/* ================= TAB 1: DAY-BY-DAY ITINERARY ================= */}
-        {activeTab === 'itinerary' && (
-          <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div>
-                <h2 className="text-xl font-black text-[#071A2B]">
-                  Day-by-Day Geographically Sensible Itinerary
-                </h2>
-                <p className="text-xs text-slate-500">
-                  Each day is divided into Morning, Afternoon, and Evening windows. Stops are clustered in the same area to eliminate criss-cross backtracking.
-                </p>
-              </div>
-
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-bold">
-                <MapPin className="w-3.5 h-3.5 text-[#FF5A1F]" />
-                <span>Geographically Clustered</span>
-              </div>
-            </div>
-
-            <div className="space-y-6">
-              {(smartPlan.dayByDay || []).map((day) => (
-                <div
-                  key={day.day}
-                  className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-6"
-                >
-                  {/* Day Header */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-2">
-                    <div>
-                      <span className="text-xs font-black text-[#FF5A1F] uppercase tracking-wider block">
-                        Day {day.day}
-                      </span>
-                      <h3 className="text-lg font-black text-[#071A2B] mt-0.5">
-                        {day.title}
-                      </h3>
-                      {day.neighborhood && (
-                        <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5 font-medium">
-                          <MapPin className="w-3.5 h-3.5 text-[#FF5A1F]" />
-                          <span>Primary area cluster: {day.neighborhood}</span>
-                        </p>
-                      )}
+                <div className="p-6 space-y-6 pt-0">
+                  {/* Route Title & Key Stats */}
+                  <div className="space-y-2 border-b border-slate-100 pb-5">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h2 className="text-xl sm:text-2xl font-black text-[#071A2B]">{selectedRoute.title}</h2>
+                      {renderPriceBadge(selectedRoute.priceClassification)}
                     </div>
 
-                    {/* Day Daily Estimates Summary Badge */}
-                    <div className="bg-[#F5F7F8] p-3 rounded-2xl border border-slate-200 text-xs space-y-1 sm:text-right">
-                      <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">
-                        Estimated Day Costs (Per Person)
-                      </span>
-                      <p className="font-extrabold text-[#071A2B]">
-                        Local Travel: ₹{day.estimatedLocalTravel?.costPerPerson || 0} • Food: ₹{day.estimatedFood?.costPerPerson || 0}
-                      </p>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 text-xs">
+                      <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200">
+                        <span className="text-[10px] font-bold uppercase text-slate-400 block">Total Travel Time</span>
+                        <span className="font-extrabold text-[#071A2B] text-sm mt-0.5 block">{selectedRoute.durationLabel}</span>
+                      </div>
+                      <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200">
+                        <span className="text-[10px] font-bold uppercase text-slate-400 block">Estimated Price</span>
+                        <span className="font-extrabold text-[#FF5A1F] text-sm mt-0.5 block">
+                          {formatPrice(selectedRoute.priceRange?.min || selectedRoute.costPerPerson)} – {formatPrice(selectedRoute.priceRange?.max || selectedRoute.costPerPerson * 1.3)}
+                        </span>
+                      </div>
+                      <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200">
+                        <span className="text-[10px] font-bold uppercase text-slate-400 block">Total Distance</span>
+                        <span className="font-extrabold text-[#071A2B] text-sm mt-0.5 block">{selectedRoute.distanceKm} km</span>
+                      </div>
+                      <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200">
+                        <span className="text-[10px] font-bold uppercase text-slate-400 block">Transfers</span>
+                        <span className="font-extrabold text-[#071A2B] text-sm mt-0.5 block">
+                          {selectedRoute.transfersCount === 0 ? 'Direct (0 Stops)' : `${selectedRoute.transfersCount} Transfer`}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Morning, Afternoon, Evening Cards (Prompt Requirement) */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {/* Morning Window */}
-                    {day.morning && (
-                      <div className="p-4 rounded-2xl bg-amber-50/50 border border-amber-200/60 space-y-2 flex flex-col justify-between">
-                        <div className="space-y-1.5">
-                          <div className="flex items-center gap-1.5 text-xs font-black text-amber-900">
-                            <Sunrise className="w-4 h-4 text-amber-600" />
-                            <span>Morning ({day.morning.time})</span>
-                          </div>
-                          <p className="text-xs font-bold text-[#071A2B]">
-                            {day.morning.title}
-                          </p>
-                          <p className="text-[11px] text-slate-600 leading-relaxed">
-                            {day.morning.description}
-                          </p>
-                        </div>
-                      </div>
-                    )}
+                  {/* ORDERED SEGMENT-BY-SEGMENT TIMELINE */}
+                  <div className="space-y-4">
+                    <h3 className="font-extrabold text-sm uppercase tracking-wider text-slate-500">
+                      Step-by-Step Journey Segments ({selectedRoute.segments?.length || 1})
+                    </h3>
 
-                    {/* Afternoon Window */}
-                    {day.afternoon && (
-                      <div className="p-4 rounded-2xl bg-orange-50/50 border border-orange-200/60 space-y-2 flex flex-col justify-between">
-                        <div className="space-y-1.5">
-                          <div className="flex items-center gap-1.5 text-xs font-black text-orange-900">
-                            <Sun className="w-4 h-4 text-[#FF5A1F]" />
-                            <span>Afternoon ({day.afternoon.time})</span>
-                          </div>
-                          <p className="text-xs font-bold text-[#071A2B]">
-                            {day.afternoon.title}
-                          </p>
-                          <p className="text-[11px] text-slate-600 leading-relaxed">
-                            {day.afternoon.description}
-                          </p>
-                        </div>
-                      </div>
-                    )}
+                    <div className="space-y-4 relative">
+                      {(selectedRoute.segments || []).map((seg, idx) => (
+                        <div key={idx} className="space-y-3">
+                          {/* Segment Card */}
+                          <div className="p-5 rounded-2xl border border-slate-200 bg-white hover:border-[#FF5A1F]/40 shadow-sm transition-all space-y-3">
+                            {/* Segment Header */}
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
+                                  {getModeIcon(seg.mode)}
+                                </div>
+                                <div>
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#FF5A1F] block">
+                                    Segment {seg.segmentIndex || idx + 1} • {seg.mode}
+                                  </span>
+                                  <h4 className="font-extrabold text-sm text-[#071A2B]">{seg.name}</h4>
+                                </div>
+                              </div>
 
-                    {/* Evening Window */}
-                    {day.evening && (
-                      <div className="p-4 rounded-2xl bg-indigo-50/50 border border-indigo-200/60 space-y-2 flex flex-col justify-between">
-                        <div className="space-y-1.5">
-                          <div className="flex items-center gap-1.5 text-xs font-black text-indigo-900">
-                            <Sunset className="w-4 h-4 text-indigo-600" />
-                            <span>Evening ({day.evening.time})</span>
-                          </div>
-                          <p className="text-xs font-bold text-[#071A2B]">
-                            {day.evening.title}
-                          </p>
-                          <p className="text-[11px] text-slate-600 leading-relaxed">
-                            {day.evening.description}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Chronological Activities / Stops */}
-                  <div className="space-y-2.5 pt-2">
-                    <span className="text-xs font-bold text-[#071A2B] block">
-                      Chronological Stops &amp; Schedule:
-                    </span>
-                    <div className="space-y-2">
-                      {(day.activities || []).map((act, actIdx) => (
-                        <div
-                          key={act.id || actIdx}
-                          className={`p-3.5 rounded-2xl border text-xs flex items-start justify-between gap-3 ${
-                            act.isMeal
-                              ? 'bg-amber-50/30 border-amber-200/60'
-                              : act.category === 'Transport'
-                              ? 'bg-purple-50/30 border-purple-200/60'
-                              : act.category === 'Accommodation'
-                              ? 'bg-sky-50/30 border-sky-200/60'
-                              : 'bg-slate-50/60 border-slate-200/70'
-                          }`}
-                        >
-                          <div className="flex items-start gap-3">
-                            <div className="flex flex-col items-center shrink-0">
-                              <span className="font-extrabold text-[11px] text-[#FF5A1F] bg-white px-2 py-0.5 rounded-md border border-orange-200 shadow-2xs">
-                                {act.time}
-                              </span>
-                              {act.travelTime && (
-                                <span className="text-[9px] text-slate-400 mt-1 whitespace-nowrap">
-                                  ⏱️ {act.travelTime}
-                                </span>
-                              )}
-                            </div>
-
-                            <div className="space-y-0.5">
-                              <div className="flex items-center gap-2">
-                                <span className="font-bold text-[#071A2B]">{act.title}</span>
-                                {act.category && (
-                                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-white text-slate-600 border border-slate-200">
-                                    {act.category}
+                              <div className="text-right">
+                                <span className="font-extrabold text-sm text-[#071A2B] block">{seg.durationLabel}</span>
+                                {seg.fareEstimate && (
+                                  <span className="text-[11px] font-bold text-slate-500">
+                                    {formatPrice(seg.fareEstimate.min)} – {formatPrice(seg.fareEstimate.max)}
                                   </span>
                                 )}
                               </div>
-                              <p className="text-slate-500 leading-relaxed">{act.desc}</p>
                             </div>
+
+                            {/* Carrier & Service */}
+                            <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-xs flex flex-wrap items-center justify-between gap-2">
+                              <div>
+                                <span className="text-slate-400 font-medium">Operator / Service: </span>
+                                <span className="font-bold text-[#071A2B]">{seg.carrier || selectedRoute.carrier}</span>
+                                {seg.serviceNumber && (
+                                  <span className="text-slate-600 font-mono text-[11px] ml-1">({seg.serviceNumber})</span>
+                                )}
+                              </div>
+                              {seg.departureTime && (
+                                <div className="text-[11px] text-slate-500 font-semibold">
+                                  Dep: {seg.departureTime} → Arr: {seg.arrivalTime}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Intermediate Stops */}
+                            {Array.isArray(seg.intermediateStops) && seg.intermediateStops.length > 0 && (
+                              <div className="text-[11px] text-slate-500 space-y-1">
+                                <span className="font-semibold text-slate-600">Intermediate Stops: </span>
+                                <span>{seg.intermediateStops.join(' • ')}</span>
+                              </div>
+                            )}
+
+                            {/* Booking Action CTA */}
+                            {seg.bookingUrl && (
+                              <div className="pt-2 flex items-center justify-between border-t border-slate-100">
+                                <span className="text-[11px] text-slate-400">Direct carrier booking</span>
+                                <a
+                                  href={seg.bookingUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="btn-primary-cb !py-1.5 !px-4 text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm"
+                                >
+                                  <span>{seg.bookingLabel || 'Book Tickets'}</span>
+                                  <ExternalLink className="w-3.5 h-3.5" />
+                                </a>
+                              </div>
+                            )}
                           </div>
 
-                          {act.estimatedCost > 0 && (
-                            <span className="text-[11px] font-bold text-emerald-600 shrink-0">
-                              Est. ₹{act.estimatedCost.toLocaleString('en-IN')}
-                            </span>
+                          {/* Layover / Transfer Notice between segments */}
+                          {seg.transferWaitMinutes > 0 && (
+                            <div className="p-3 rounded-xl bg-amber-50/80 border border-amber-200 text-xs text-amber-900 flex items-center gap-2.5 ml-4">
+                              <Clock className="w-4 h-4 text-amber-600 shrink-0" />
+                              <div className="text-[11px]">
+                                <span className="font-bold">Connection Layover: {seg.transferWaitMinutes} mins. </span>
+                                <span>{seg.transferNotice || 'Allow adequate connection time between stations.'}</span>
+                              </div>
+                            </div>
                           )}
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  {/* Day Accommodation Footer Note */}
-                  {day.accommodation && (
-                    <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs flex items-center justify-between text-slate-600">
-                      <div className="flex items-center gap-2">
-                        <BedDouble className="w-4 h-4 text-sky-600" />
-                        <span><strong>Accommodation:</strong> {day.accommodation.name} ({day.accommodation.location})</span>
+                  {/* Data Source & Price Freshness Footer */}
+                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-[11px] text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5">
+                      <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>Data Provider: <strong className="text-slate-700">{selectedRoute.dataSource || selectedRoute.provider}</strong></span>
+                    </div>
+                    <span className="text-slate-400">
+                      Retrieved: {new Date(selectedRoute.lastRetrieved || Date.now()).toLocaleDateString()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* ========================================================================= */
+              /* VIEW A: COMPARABLE ROUTE ALTERNATIVES LIST (ROME2RIO DISCOVERY)            */
+              /* ========================================================================= */
+              <div className="space-y-4">
+                {/* Header Summary & Route Count */}
+                <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <h2 className="text-base sm:text-lg font-black text-[#071A2B]">
+                        Ways to travel from {origin.split(',')[0]} to {destination.split(',')[0]}
+                      </h2>
+                      <p className="text-xs text-slate-500">
+                        {allRoutes.length} genuine transport alternatives found • {journeyResults?.distanceKm || 0} km
+                      </p>
+                    </div>
+
+                    {journeyResults?.fastest && (
+                      <span className="text-xs bg-[#FF5A1F]/10 text-[#FF5A1F] font-bold px-3 py-1 rounded-full self-start sm:self-auto">
+                        Fastest: {journeyResults.fastest.durationLabel}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* SORT TABS (Best, Fastest, Cheapest) */}
+                  <div className="flex items-center gap-2 border-t border-slate-100 pt-3 flex-wrap">
+                    <span className="text-xs font-bold text-slate-400 mr-1">Sort by:</span>
+                    {[
+                      { id: 'best', label: '⭐ Recommended' },
+                      { id: 'fastest', label: '⚡ Fastest' },
+                      { id: 'cheapest', label: '💰 Cheapest' },
+                    ].map((tab) => (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => setSortBy(tab.id)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                          sortBy === tab.id
+                            ? 'bg-[#071A2B] text-white shadow-sm'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                      >
+                        {tab.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* MODE FILTER PILLS */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs pt-1">
+                    {[
+                      { id: 'ALL', label: `All (${allRoutes.length})` },
+                      { id: 'TRAIN', label: 'Train', icon: Train },
+                      { id: 'BUS', label: 'Bus', icon: Bus },
+                      { id: 'FLIGHT', label: 'Flight', icon: Plane },
+                      { id: 'CAB', label: 'Cab / Taxi', icon: Car },
+                      { id: 'CAR', label: 'Drive', icon: Navigation },
+                      { id: 'FERRY', label: 'Ferry', icon: Anchor },
+                    ].map((filter) => {
+                      const Icon = filter.icon;
+                      return (
+                        <button
+                          key={filter.id}
+                          type="button"
+                          onClick={() => setSelectedModeFilter(filter.id)}
+                          className={`px-3 py-1 rounded-full font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1 ${
+                            selectedModeFilter === filter.id
+                              ? 'bg-[#FF5A1F] text-white shadow-md shadow-[#FF5A1F]/30'
+                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          }`}
+                        >
+                          {Icon && <Icon className="w-3 h-3" />}
+                          <span>{filter.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* ROUTE CARDS LIST */}
+                {sortedRoutes.length === 0 ? (
+                  <div className="bg-white p-12 rounded-3xl border border-slate-200 text-center space-y-3">
+                    <Compass className="w-10 h-10 text-slate-400 mx-auto" />
+                    <h3 className="font-extrabold text-base text-[#071A2B]">No routes match your active filters</h3>
+                    <p className="text-xs text-slate-500">Try switching your mode filter to All to see other travel alternatives.</p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedModeFilter('ALL');
+                        setMaxTransfersFilter('ALL');
+                      }}
+                      className="btn-primary-cb !text-xs !py-2 !px-4"
+                    >
+                      Reset Filters
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {sortedRoutes.map((route) => {
+                      const isSelected = selectedRouteId === route.id;
+                      return (
+                        <div
+                          key={route.id}
+                          onClick={() => setSelectedRouteId(route.id)}
+                          className={`p-5 rounded-3xl bg-white border transition-all cursor-pointer hover:shadow-lg space-y-3 ${
+                            isSelected
+                              ? 'border-[#FF5A1F] ring-2 ring-[#FF5A1F]/30 shadow-md'
+                              : 'border-slate-200 hover:border-[#FF5A1F]/60'
+                          }`}
+                        >
+                          {/* Card Top: Mode Chain & Duration */}
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="space-y-1">
+                              {/* Sequence of Mode Badges */}
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                {(route.modeSummary || [route.mode]).map((m, i) => (
+                                  <React.Fragment key={i}>
+                                    <span className="px-2 py-0.5 rounded-lg bg-slate-100 text-[#071A2B] font-bold text-xs flex items-center gap-1">
+                                      {getModeIcon(m)}
+                                      <span>{m}</span>
+                                    </span>
+                                    {i < (route.modeSummary || [route.mode]).length - 1 && (
+                                      <span className="text-slate-400 text-xs font-bold">➔</span>
+                                    )}
+                                  </React.Fragment>
+                                ))}
+
+                                {route.isBest && (
+                                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                                    ⭐ Best Value
+                                  </span>
+                                )}
+                                {route.isCheapest && !route.isBest && (
+                                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                                    💰 Cheapest
+                                  </span>
+                                )}
+                              </div>
+
+                              <h3 className="font-extrabold text-base text-[#071A2B] pt-0.5 hover:text-[#FF5A1F] transition-colors">
+                                {route.title}
+                              </h3>
+                            </div>
+
+                            {/* Duration & Price */}
+                            <div className="text-right shrink-0">
+                              <span className="text-base sm:text-lg font-black text-[#071A2B] block">
+                                {route.durationLabel}
+                              </span>
+                              <span className="text-sm font-extrabold text-[#FF5A1F] block">
+                                {formatPrice(route.priceRange?.min || route.costPerPerson)} – {formatPrice(route.priceRange?.max || route.costPerPerson * 1.3)}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Operators & Transfers Subtitle */}
+                          <div className="flex items-center justify-between text-xs text-slate-500 pt-1 border-t border-slate-100">
+                            <div className="flex items-center gap-2 truncate">
+                              <span>{route.frequency || 'Regular service'}</span>
+                              <span>•</span>
+                              <span className="font-semibold text-slate-700">
+                                {route.transfersCount === 0 ? 'Direct' : `${route.transfersCount} Transfer (${route.transfers?.join(', ') || 'Hub'})`}
+                              </span>
+                            </div>
+
+                            <span className="text-xs font-bold text-[#FF5A1F] flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                              <span>See details</span>
+                              <ArrowRight className="w-3.5 h-3.5" />
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* RIGHT COLUMN: INTERACTIVE ROUTE MAP VISUALIZER (5 of 12 cols, Sticky) */}
+          <div className="lg:col-span-5 sticky top-28 space-y-4">
+            <div className="bg-[#071A2B] rounded-3xl p-6 text-white shadow-xl border border-white/10 space-y-4 relative overflow-hidden">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 rounded-full bg-[#FF5A1F] animate-ping" />
+                  <h3 className="font-extrabold text-sm text-white">Route Visualizer</h3>
+                </div>
+                <span className="text-[11px] font-bold text-slate-300">
+                  {selectedRoute ? selectedRoute.title : 'Overview Map'}
+                </span>
+              </div>
+
+              {/* ROUTE GEOMETRY & WAYPOINTS CANVAS */}
+              <div className="relative rounded-2xl bg-[#0C2438] border border-white/15 p-5 min-h-[300px] flex flex-col justify-between overflow-hidden">
+                {/* Visual SVG Map Background Grid */}
+                <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px]" />
+
+                {/* Origin Waypoint Pin */}
+                <div className="relative z-10 flex items-start gap-3">
+                  <div className="w-7 h-7 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-xs shadow-lg shadow-emerald-500/30">
+                    A
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 block">Starting Point</span>
+                    <h4 className="font-black text-sm text-white">{origin.split(',')[0]}</h4>
+                    <p className="text-[10px] text-slate-400">{origin.split(',').slice(1).join(', ')}</p>
+                  </div>
+                </div>
+
+                {/* Dynamic Segment Connection Line with Modes */}
+                <div className="relative z-10 my-4 ml-3.5 pl-5 border-l-2 border-dashed border-[#FF5A1F]/60 space-y-3">
+                  {selectedRoute ? (
+                    (selectedRoute.segments || []).map((seg, i) => (
+                      <div key={i} className="flex items-center gap-2 text-xs">
+                        <div className="w-6 h-6 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
+                          {getModeIcon(seg.mode)}
+                        </div>
+                        <span className="text-white font-bold">{seg.mode}</span>
+                        <span className="text-slate-400 text-[11px]">({seg.durationLabel})</span>
                       </div>
-                      <span className="text-[11px] font-semibold text-slate-500">{day.accommodation.note}</span>
+                    ))
+                  ) : (
+                    <div className="text-xs text-slate-400 space-y-1">
+                      <p className="font-bold text-slate-300">Multimodal Highway Corridor</p>
+                      <p className="text-[11px]">Connecting {journeyResults?.distanceKm || 0} km by road and rail</p>
                     </div>
                   )}
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
 
-        {/* ================= TAB 2: COMPLETE COST CALCULATION ================= */}
-        {activeTab === 'budget' && (
-          <div className="bg-white rounded-3xl p-6 sm:p-10 border border-slate-200 shadow-xl space-y-8">
-            <div className="space-y-1">
-              <h2 className="text-2xl font-black text-[#071A2B]">
-                Mathematically Exact Cost Calculation
-              </h2>
-              <p className="text-xs text-slate-500">
-                Every displayed cost directly contributes to the total. No hidden fees or random discrepancies.
-              </p>
-            </div>
-
-            {/* 6-Category Component Table (Prompt Requirement) */}
-            <div className="border border-slate-200 rounded-2xl overflow-hidden">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-[#F5F7F8] border-b border-slate-200 font-bold text-slate-600 uppercase text-[10px] tracking-wider">
-                  <tr>
-                    <th className="p-3.5 sm:px-6">Component</th>
-                    <th className="p-3.5 sm:px-6">Description</th>
-                    <th className="p-3.5 sm:px-6 text-right">Per Person</th>
-                    <th className="p-3.5 sm:px-6 text-right">Total Amount</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                  {breakdown.map((item) => (
-                    <tr key={item.key} className="hover:bg-slate-50/60 transition-colors">
-                      <td className="p-3.5 sm:px-6 font-bold text-[#071A2B]">
-                        {item.category}
-                      </td>
-                      <td className="p-3.5 sm:px-6 text-slate-500">
-                        {item.label}
-                      </td>
-                      <td className="p-3.5 sm:px-6 text-right text-slate-600 font-semibold">
-                        ₹{item.perPerson?.toLocaleString('en-IN')}
-                      </td>
-                      <td className="p-3.5 sm:px-6 text-right font-black text-[#071A2B]">
-                        ₹{item.amount?.toLocaleString('en-IN')}
-                      </td>
-                    </tr>
-                  ))}
-
-                  {/* MATHEMATICAL TOTAL ROW */}
-                  <tr className="bg-orange-50/70 border-t-2 border-[#FF5A1F] font-black text-[#071A2B] text-sm">
-                    <td className="p-4 sm:px-6 uppercase tracking-wider text-[#FF5A1F]">
-                      TOTAL
-                    </td>
-                    <td className="p-4 sm:px-6 text-xs text-slate-500 font-normal">
-                      Sum of Transportation + Accommodation + Food + Local transport + Activities + Miscellaneous
-                    </td>
-                    <td className="p-4 sm:px-6 text-right text-[#FF5A1F]">
-                      ₹{Number(smartPlan.perPersonBudget).toLocaleString('en-IN')}
-                    </td>
-                    <td className="p-4 sm:px-6 text-right text-base text-[#FF5A1F]">
-                      ₹{totalCost.toLocaleString('en-IN')}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            {/* Budget vs Estimated Total Comparison Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
-              <div data-testid="cost-budget-card" className="p-5 rounded-2xl bg-slate-50 border border-slate-200">
-                <span className="text-xs font-bold text-slate-500 block">
-                  Budget
-                </span>
-                <span className="text-xl font-black text-[#071A2B] mt-1 block">
-                  ₹{userBudget.toLocaleString('en-IN')}
-                </span>
-                <span className="text-[11px] text-slate-500 block mt-0.5">
-                  ₹{Number(smartPlan.userPerPersonBudget).toLocaleString('en-IN')} / person
-                </span>
-              </div>
-
-              <div data-testid="cost-estimated-card" className="p-5 rounded-2xl bg-slate-50 border border-slate-200">
-                <span className="text-xs font-bold text-slate-500 block">
-                  Estimated Total
-                </span>
-                <span className="text-xl font-black text-[#FF5A1F] mt-1 block">
-                  ₹{totalCost.toLocaleString('en-IN')}
-                </span>
-                <span className="text-[11px] text-slate-500 block mt-0.5">
-                  ₹{Number(smartPlan.perPersonBudget).toLocaleString('en-IN')} / person
-                </span>
-              </div>
-
-              <div data-testid="cost-remaining-card" className="p-5 rounded-2xl bg-slate-50 border border-slate-200">
-                <span className="text-xs font-bold text-slate-500 block">
-                  {isOverBudget ? 'Over-budget amount' : 'Remaining budget'}
-                </span>
-                <span
-                  className={`text-xl font-black mt-1 block ${
-                    isOverBudget ? 'text-rose-600' : 'text-emerald-600'
-                  }`}
-                >
-                  {isOverBudget
-                    ? `₹${shortfallTotal.toLocaleString('en-IN')} Shortfall`
-                    : `₹${remainingBudget.toLocaleString('en-IN')} Spare`}
-                </span>
-                <span className="text-[11px] text-slate-500 block mt-0.5">
-                  {isOverBudget
-                    ? `Over budget by ₹${shortfallPerPerson.toLocaleString('en-IN')} / person`
-                    : `Comfortably within entered budget`}
-                </span>
-              </div>
-            </div>
-
-            <p className="text-[11px] text-slate-400 italic">
-              * Note: All prices shown are realistic estimates calculated from highway toll distances, regional transport tariffs, and verified stay catalogs.
-            </p>
-          </div>
-        )}
-
-        {/* ================= TAB 3: ACCOMMODATION DETAILS ================= */}
-        {activeTab === 'stay' && (
-          <div className="bg-white rounded-3xl p-6 sm:p-10 border border-slate-200 shadow-xl space-y-6">
-            <div className="space-y-1">
-              <h2 className="text-xl font-black text-[#071A2B]">Selected Accommodation</h2>
-              <p className="text-xs text-slate-500">
-                Intelligently chosen to match your party size, duration, and target budget.
-              </p>
-            </div>
-
-            <div className="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden flex flex-col md:flex-row">
-              <div className="md:w-1/3 h-56 md:h-auto bg-slate-200 relative overflow-hidden">
-                <img
-                  src={
-                    smartPlan.stayRecommendation?.image ||
-                    'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=800&q=80'
-                  }
-                  alt={smartPlan.stayRecommendation?.name}
-                  className="w-full h-full object-cover"
-                />
-                <span className="absolute top-3 left-3 bg-[#071A2B]/85 text-white px-2.5 py-1 rounded-full text-[10px] font-bold">
-                  ★ {smartPlan.stayRecommendation?.rating || 4.8} Rating
-                </span>
-              </div>
-
-              <div className="p-6 md:w-2/3 space-y-4 flex flex-col justify-between">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-bold text-[#FF5A1F] uppercase tracking-wider bg-orange-100 px-2 py-0.5 rounded">
-                      {smartPlan.stayRecommendation?.type}
-                    </span>
-                    <span className="text-xs text-slate-500">
-                      📍 {smartPlan.stayRecommendation?.location}
-                    </span>
+                {/* Destination Waypoint Pin */}
+                <div className="relative z-10 flex items-start gap-3">
+                  <div className="w-7 h-7 rounded-full bg-[#FF5A1F] text-white flex items-center justify-center font-bold text-xs shadow-lg shadow-[#FF5A1F]/30">
+                    B
                   </div>
-
-                  <h3 className="text-2xl font-black text-[#071A2B]">
-                    {smartPlan.stayRecommendation?.name}
-                  </h3>
-
-                  <div className="p-4 bg-white rounded-xl border border-slate-200 space-y-2 text-xs">
-                    <div className="flex justify-between font-bold text-slate-800">
-                      <span>Room Allocation:</span>
-                      <span className="text-[#FF5A1F]">
-                        {smartPlan.stayRecommendation?.roomLabel}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-slate-500">
-                      <span>Stay Duration:</span>
-                      <span>{smartPlan.nights} Nights</span>
-                    </div>
-                    <div className="flex justify-between text-slate-500">
-                      <span>Estimated Nightly Rate:</span>
-                      <span>{smartPlan.stayRecommendation?.price}</span>
-                    </div>
-                    <div className="pt-2 border-t border-slate-100 flex justify-between font-black text-sm text-[#071A2B]">
-                      <span>Total Accommodation Cost:</span>
-                      <span className="text-emerald-600">
-                        ₹{Number(smartPlan.stayRecommendation?.totalPrice || 0).toLocaleString('en-IN')}
-                      </span>
-                    </div>
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#FF5A1F] block">Destination</span>
+                    <h4 className="font-black text-sm text-white">{destination.split(',')[0]}</h4>
+                    <p className="text-[10px] text-slate-400">{destination.split(',').slice(1).join(', ')}</p>
                   </div>
                 </div>
+              </div>
 
-                <div className="flex flex-wrap gap-1.5 pt-2">
-                  {(smartPlan.stayRecommendation?.amenities || []).map((amenity, idx) => (
-                    <span
-                      key={idx}
-                      className="px-2.5 py-1 rounded-full bg-white border border-slate-200 text-slate-600 text-[11px] font-medium"
-                    >
-                      ✓ {amenity}
-                    </span>
-                  ))}
-                </div>
+              {/* Direct Maps Action */}
+              <div className="pt-1 flex items-center justify-between text-xs">
+                <span className="text-slate-400">Total Distance: <strong className="text-white">{journeyResults?.distanceKm || 0} km</strong></span>
+                <a
+                  href={`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs font-bold text-[#FF5A1F] hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <span>Open live in Google Maps</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
               </div>
             </div>
-          </div>
-        )}
 
-        {/* ================= TAB 4: TRANSIT ROUTE & OPTIONS ================= */}
-        {activeTab === 'transport' && (
-          <div className="bg-white rounded-3xl p-6 sm:p-10 border border-slate-200 shadow-xl space-y-6">
-            <div className="space-y-1">
-              <h2 className="text-xl font-black text-[#071A2B]">Transit Route &amp; Options</h2>
-              <p className="text-xs text-slate-500">
-                Sensibly evaluated intercity transit options between {smartPlan.originCity} and {smartPlan.destinationCity}.
+            {/* Rome2Rio Experience Information Pill */}
+            <div className="bg-white p-5 rounded-3xl border border-slate-200 text-xs space-y-2">
+              <div className="flex items-center gap-2 font-bold text-[#071A2B]">
+                <Info className="w-4 h-4 text-[#FF5A1F]" />
+                <span>Search Accuracy & Verification</span>
+              </div>
+              <p className="text-[11px] text-slate-500 leading-relaxed">
+                Routes are calculated using live road distance matrices, real train station enquiry schedules, and verified operator booking paths.
               </p>
             </div>
-
-            {/* Selected Transit Hero */}
-            <div className="p-5 rounded-2xl bg-orange-50 border border-orange-200 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-[#FF5A1F] uppercase tracking-wider">
-                  Recommended Transit Choice
-                </span>
-                <span className="text-xs font-bold text-slate-600">
-                  {smartPlan.distance}
-                </span>
-              </div>
-              <h3 className="text-lg font-black text-[#071A2B]">
-                {smartPlan.transportRecommendation?.method}
-              </h3>
-              <p className="text-xs text-slate-600">
-                {smartPlan.transportRecommendation?.note}
-              </p>
-              <div className="pt-2 flex items-center justify-between text-xs font-bold text-[#071A2B]">
-                <span>Duration: {smartPlan.transportRecommendation?.duration}</span>
-                <span className="text-emerald-600 text-sm">
-                  {smartPlan.transportRecommendation?.costPerPerson} / person round-trip
-                </span>
-              </div>
-            </div>
-
-            {/* All Evaluated Options */}
-            <div className="space-y-3 pt-2">
-              <span className="text-xs font-bold text-[#071A2B] block">
-                All Available Intercity Transit Options:
-              </span>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {(smartPlan.allTransportOptions || []).map((opt) => (
-                  <div
-                    key={opt.id}
-                    className="p-4 rounded-2xl border border-slate-200 bg-slate-50 space-y-2 text-xs"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-[#071A2B]">{opt.name}</span>
-                      <span className="text-[11px] font-extrabold text-[#FF5A1F]">
-                        {opt.durationLabel}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-slate-500">{opt.description}</p>
-                    <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[10px]">
-                      <span className="bg-sky-50 text-sky-700 font-bold px-2 py-0.5 rounded border border-sky-200">
-                        {opt.priceClassification || 'INDICATIVE_ESTIMATE'}
-                      </span>
-                      {opt.dataSource && (
-                        <span className="bg-slate-100 text-slate-600 font-medium px-2 py-0.5 rounded truncate max-w-[200px]">
-                          Src: {opt.dataSource}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex justify-between items-center pt-2 border-t border-slate-200/60 font-black">
-                      <span className="text-slate-500 text-[11px]">Round-trip cost:</span>
-                      <span className="text-[#071A2B]">
-                        ₹{opt.costPerPerson.toLocaleString('en-IN')} / person
-                      </span>
-                    </div>
-                    {opt.bookingUrl && (
-                      <div className="pt-1.5">
-                        <a
-                          href={opt.bookingUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-[11px] font-bold text-[#FF5A1F] hover:underline"
-                        >
-                          <span>Verify / Book on {opt.provider || 'Provider'}</span>
-                          <ExternalLink className="w-3 h-3" />
-                        </a>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-      </main>
-
-      {/* 5. EDIT CONSTRAINTS MODAL */}
-      {showEditModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#071A2B]/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 space-y-6 shadow-2xl border border-slate-100">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <Edit3 className="w-4 h-4 text-[#FF5A1F]" />
-                <h3 className="font-black text-base text-[#071A2B]">Adjust Budget &amp; Travelers</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowEditModal(false)}
-                className="p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleApplyEditConstraints} className="space-y-4">
-              <div>
-                <label className="text-xs font-bold text-[#071A2B] block mb-1">
-                  Total Budget (₹)
-                </label>
-                <input
-                  type="number"
-                  min="1000"
-                  step="500"
-                  value={editBudget}
-                  onChange={(e) => setEditBudget(e.target.value)}
-                  className="w-full p-3 rounded-2xl border bg-slate-50 border-slate-200 text-sm font-bold text-[#071A2B] focus:outline-none focus:border-[#FF5A1F] focus:bg-white transition-all"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-[#071A2B] block mb-1">
-                  Number of Travelers
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  max="25"
-                  value={editTravelers}
-                  onChange={(e) => setEditTravelers(e.target.value)}
-                  className="w-full p-3 rounded-2xl border bg-slate-50 border-slate-200 text-sm font-bold text-[#071A2B] focus:outline-none focus:border-[#FF5A1F] focus:bg-white transition-all"
-                />
-              </div>
-
-              <div className="pt-2 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowEditModal(false)}
-                  className="btn-secondary-cb !py-2.5 !px-4 !text-xs font-bold cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="btn-primary-cb !py-2.5 !px-6 !text-xs font-bold cursor-pointer"
-                >
-                  Recalculate Plan
-                </button>
-              </div>
-            </form>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

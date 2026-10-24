@@ -51,8 +51,12 @@ export function getRoadDistanceKm(origin, destination) {
 
   const pairKey1 = `${o.id}-${d.id}`;
   const pairKey2 = `${o.city.toLowerCase()}-${d.city.toLowerCase()}`;
+  const revKey1 = `${d.id}-${o.id}`;
+  const revKey2 = `${d.city.toLowerCase()}-${o.city.toLowerCase()}`;
   if (knownPairs[pairKey1]) return knownPairs[pairKey1];
   if (knownPairs[pairKey2]) return knownPairs[pairKey2];
+  if (knownPairs[revKey1]) return knownPairs[revKey1];
+  if (knownPairs[revKey2]) return knownPairs[revKey2];
 
   const straightDist = calculateHaversineDistance(o.lat, o.lng, d.lat, d.lng);
   if (straightDist === 0) return 0;

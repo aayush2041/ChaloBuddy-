@@ -1,10 +1,22 @@
 // Live destination discovery helpers used by Smart Planner.
-// Open-Meteo geocoding is used for worldwide city/place lookup without an API key.
-// Wikipedia geosearch supplies real nearby landmarks instead of invented attractions.
+// Integrates Transport Hubs (Airports, Railway Stations, Bus Terminals, Ferry Ports)
+// Open-Meteo geocoding for worldwide city/place lookup.
+// Wikipedia geosearch for real nearby landmarks.
+
+import { findTransportHubs } from '../data/transportHubsData.js';
 
 export async function geocodeLocation(query) {
   const q = String(query || '').trim();
   if (!q) throw new Error('Location is required');
+
+  // Check transport hubs first
+  const matchingHubs = findTransportHubs(q, 1);
+  if (matchingHubs.length > 0) {
+    return {
+      ...matchingHubs[0],
+      source: 'hub',
+    };
+  }
 
   const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=8&language=en&format=json`;
   const response = await fetch(url);
@@ -24,11 +36,12 @@ export async function geocodeLocation(query) {
     country: r.country || '',
     countryCode: r.country_code || '',
     fullName: [r.name, r.admin1, r.country].filter(Boolean).join(', '),
-    type: r.feature_code || 'Place',
+    type: r.feature_code || 'City',
     lat: Number(r.latitude),
     lng: Number(r.longitude),
     timezone: r.timezone || null,
     population: r.population || null,
+    source: 'geocoding',
   };
 }
 
@@ -36,13 +49,19 @@ export async function searchLocations(query, limit = 8) {
   const q = String(query || '').trim();
   if (q.length < 2) return [];
 
+  // 1. Check local Transport Hubs (Airports, Railway Stations, Bus Stations, Ferries)
+  const hubs = findTransportHubs(q, 4).map((h) => ({
+    ...h,
+    source: 'hub',
+  }));
+
   try {
     const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=${Math.min(10, Math.max(1, limit))}&language=en&format=json`;
     const response = await fetch(url);
-    if (!response.ok) return [];
+    if (!response.ok) return hubs;
     const data = await response.json();
 
-    return (data.results || []).map((r) => ({
+    const geoResults = (data.results || []).map((r) => ({
       id: `geo-${r.id}`,
       placeId: String(r.id),
       placeName: r.name,
@@ -51,15 +70,17 @@ export async function searchLocations(query, limit = 8) {
       country: r.country || '',
       countryCode: r.country_code || '',
       fullName: [r.name, r.admin1, r.country].filter(Boolean).join(', '),
-      type: r.feature_code || 'Place',
+      type: r.feature_code || 'City',
       lat: Number(r.latitude),
       lng: Number(r.longitude),
       timezone: r.timezone || null,
       population: r.population || null,
       source: 'geocoding',
     }));
+
+    return [...hubs, ...geoResults].slice(0, limit);
   } catch {
-    return [];
+    return hubs;
   }
 }
 
