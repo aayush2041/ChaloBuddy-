@@ -102,37 +102,28 @@ export default function TripsPage() {
     return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, []);
 
-  // Synchronize when route params change (e.g. from homepage search or deep link)
+  // Synchronize when route params change (e.g. from homepage search, deep link, or browser Back/Forward)
   useEffect(() => {
-    const params = currentRoute?.params;
-    if (!params) return;
+    const params = currentRoute?.params || {};
 
-    if (params.from !== undefined && params.from !== fromLocation) {
-      setFromLocation(params.from);
-    }
-    if (params.destination !== undefined && params.destination !== destination) {
-      setDestination(params.destination);
-    }
-    const paramDate = params.date || params.start;
-    if (paramDate !== undefined && paramDate !== travelDate) {
-      setTravelDate(paramDate);
-    }
-    if (params.travelers !== undefined) {
-      const p = Math.max(1, Math.min(12, Number(params.travelers) || 1));
-      if (p !== passengers) setPassengers(p);
-    }
-    if (params.category !== undefined && params.category !== selectedCategory) {
-      setSelectedCategory(params.category);
-    }
-    if (params.maxPrice !== undefined) {
-      const mp = params.maxPrice ? Number(params.maxPrice) : null;
-      if (mp !== maxPrice) setMaxPrice(mp);
-    }
-    if (params.sortBy !== undefined && params.sortBy !== sortBy) {
-      setSortBy(params.sortBy);
-    }
+    const targetFrom = params.from || params.origin || '';
+    const targetDest = params.destination || '';
+    const targetDate = params.date || params.start || '';
+    const targetTravelers = Math.max(1, Math.min(12, Number(params.travelers) || 1));
+    const targetCategory = params.category || 'all';
+    const targetMaxPrice = params.maxPrice ? Number(params.maxPrice) : null;
+    const targetSortBy = params.sortBy || 'recommended';
+
+    setFromLocation((prev) => (prev !== targetFrom ? targetFrom : prev));
+    setDestination((prev) => (prev !== targetDest ? targetDest : prev));
+    setTravelDate((prev) => (prev !== targetDate ? targetDate : prev));
+    setPassengers((prev) => (prev !== targetTravelers ? targetTravelers : prev));
+    setSelectedCategory((prev) => (prev !== targetCategory ? targetCategory : prev));
+    setMaxPrice((prev) => (prev !== targetMaxPrice ? targetMaxPrice : prev));
+    setSortBy((prev) => (prev !== targetSortBy ? targetSortBy : prev));
   }, [
     currentRoute?.params?.from,
+    currentRoute?.params?.origin,
     currentRoute?.params?.destination,
     currentRoute?.params?.date,
     currentRoute?.params?.start,

@@ -10,6 +10,7 @@ import {
   Users,
   Star,
   Tag,
+  User,
 } from 'lucide-react';
 
 export default function TripCard({ trip }) {
@@ -24,17 +25,30 @@ export default function TripCard({ trip }) {
     setTimeout(() => setHeartPopping(false), 350);
   };
 
+  const handleHeartKeyDown = (e) => {
+    // Prevent Enter or Space on Save Heart button from bubbling to parent card
+    if (e.key === ' ' || e.key === 'Enter') {
+      e.stopPropagation();
+    }
+  };
+
   const startingLocation = getTripStartingLocation(trip);
   const availableSeats =
     trip.spotsLeft ??
     (trip.maxGroupSize - (trip.currentGroupSize || 0)) ??
     4;
-  const host = trip.organizer || {
-    name: 'Verified Host',
-    avatar:
-      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
-    rating: 4.9,
-  };
+
+  // Genuine host resolution without fabricated defaults
+  const host = trip.organizer;
+  const hostName = host?.name || 'Trip Leader';
+  const hostAvatar = host?.avatar || null;
+  const hasValidRating =
+    typeof host?.rating === 'number' &&
+    Number.isFinite(host.rating) &&
+    host.rating > 0 &&
+    host.rating <= 5;
+  const isVerified = Boolean(trip.verifiedOrganizer === true || host?.verified === true);
+
   const primaryVibe = Array.isArray(trip.vibes) && trip.vibes.length > 0 ? trip.vibes[0] : (trip.vibe || null);
 
   const handleCardClick = () => {
@@ -42,6 +56,10 @@ export default function TripCard({ trip }) {
   };
 
   const handleKeyDown = (e) => {
+    // Only navigate if the event originated directly on the card div, not a child interactive element
+    if (e.target !== e.currentTarget) {
+      return;
+    }
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       handleCardClick();
@@ -91,6 +109,7 @@ export default function TripCard({ trip }) {
           <button
             type="button"
             onClick={handleHeartClick}
+            onKeyDown={handleHeartKeyDown}
             aria-label={saved ? `Remove ${trip.title} from saved trips` : `Save ${trip.title}`}
             className={`w-11 h-11 rounded-full flex items-center justify-center backdrop-blur-md transition-all cursor-pointer touch-manipulation shrink-0 ${
               saved
@@ -141,22 +160,28 @@ export default function TripCard({ trip }) {
           {/* Host Information */}
           <div className="flex items-center justify-between pt-2.5 border-t border-white/10 text-xs">
             <div className="flex items-center gap-2 min-w-0">
-              <img
-                src={host.avatar}
-                alt={host.name}
-                className="w-6 h-6 rounded-full object-cover ring-1 ring-white/20 shrink-0"
-              />
+              {hostAvatar ? (
+                <img
+                  src={hostAvatar}
+                  alt={hostName}
+                  className="w-6 h-6 rounded-full object-cover ring-1 ring-white/20 shrink-0"
+                />
+              ) : (
+                <div className="w-6 h-6 rounded-full bg-slate-700 ring-1 ring-white/20 flex items-center justify-center text-[10px] font-bold text-slate-300 shrink-0">
+                  <User className="w-3.5 h-3.5" />
+                </div>
+              )}
               <span className="font-medium text-slate-200 truncate max-w-[110px] sm:max-w-[140px]">
-                {host.name}
+                {hostName}
               </span>
-              {host.rating && (
+              {hasValidRating && (
                 <span className="hidden xs:flex items-center gap-0.5 text-[11px] text-amber-300 font-bold shrink-0">
                   <Star className="w-3 h-3 fill-amber-300" />
-                  <span>{host.rating}</span>
+                  <span>{Number(host.rating).toFixed(1)}</span>
                 </span>
               )}
             </div>
-            {trip.verifiedOrganizer && (
+            {isVerified && (
               <span className="flex items-center gap-1 text-[11px] text-emerald-400 font-medium shrink-0">
                 <ShieldCheck className="w-3 h-3" />
                 <span>Verified</span>

@@ -125,8 +125,7 @@ function categoryMatches(category, trip) {
       tripVibes.includes('beaches') ||
       tripVibes.includes('beach') ||
       combined.includes('beach') ||
-      combined.includes('coastal') ||
-      combined.includes('goa')
+      combined.includes('coastal')
     );
   }
   if (cat === 'mountains') {
@@ -135,7 +134,7 @@ function categoryMatches(category, trip) {
       combined.includes('mountain') ||
       combined.includes('himalay') ||
       combined.includes('alpine') ||
-      combined.includes('pass')
+      /\b(pass|passes)\b/i.test(combined)
     );
   }
   if (cat === 'trekking') {
@@ -228,7 +227,10 @@ export async function executeTripSearch(allTrips, criteria = {}) {
       // 5. Category / Travel Style filter
       if (!categoryMatches(category, trip)) return false;
 
-      // 6. Price range filters
+      // 6. Price range filters with strict missing/invalid price guard
+      const tripPrice = Number(trip.price);
+      const hasValidPrice = Number.isFinite(tripPrice) && tripPrice > 0;
+
       if (
         maxPrice !== null &&
         maxPrice !== undefined &&
@@ -236,7 +238,10 @@ export async function executeTripSearch(allTrips, criteria = {}) {
         !isNaN(Number(maxPrice))
       ) {
         const numMax = Number(maxPrice);
-        if (numMax > 0 && Number(trip.price) > numMax) return false;
+        if (numMax > 0) {
+          // If price is missing/invalid or exceeds maxPrice, it cannot satisfy max budget
+          if (!hasValidPrice || tripPrice > numMax) return false;
+        }
       }
 
       if (
@@ -246,18 +251,28 @@ export async function executeTripSearch(allTrips, criteria = {}) {
         !isNaN(Number(minPrice))
       ) {
         const numMin = Number(minPrice);
-        if (numMin > 0 && Number(trip.price) < numMin) return false;
+        if (numMin > 0) {
+          if (!hasValidPrice || tripPrice < numMin) return false;
+        }
       }
 
       return true;
     });
 
-    // 7. Apply Sorting
+    // 7. Apply Sorting with safe non-finite handling
     const sortedResults = [...results];
     if (sortBy === 'price-low') {
-      sortedResults.sort((a, b) => Number(a.price || 0) - Number(b.price || 0));
+      sortedResults.sort((a, b) => {
+        const pa = Number.isFinite(Number(a.price)) && Number(a.price) > 0 ? Number(a.price) : Infinity;
+        const pb = Number.isFinite(Number(b.price)) && Number(b.price) > 0 ? Number(b.price) : Infinity;
+        return pa - pb;
+      });
     } else if (sortBy === 'price-high') {
-      sortedResults.sort((a, b) => Number(b.price || 0) - Number(a.price || 0));
+      sortedResults.sort((a, b) => {
+        const pa = Number.isFinite(Number(a.price)) && Number(a.price) > 0 ? Number(a.price) : -Infinity;
+        const pb = Number.isFinite(Number(b.price)) && Number(b.price) > 0 ? Number(b.price) : -Infinity;
+        return pb - pa;
+      });
     } else if (sortBy === 'seats') {
       const getSeats = (t) =>
         Number(t.spotsLeft ?? (t.maxGroupSize - (t.currentGroupSize || 0)) ?? 0);
